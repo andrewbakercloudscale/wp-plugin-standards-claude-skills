@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+._*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+*.zip
+node_modules/
+vendor/
+
+# Local deploy tooling
+.claude/
+.claude-flow/
