@@ -22,6 +22,21 @@ git clone https://github.com/andrewbakercloudscale/wp-plugin-standards-claude-sk
 
 No dependencies. No build step. The skill is plain Markdown.
 
+### Optional: install as a slash command
+
+Copy `commands/wp-plugin-standards-review.md` to your Claude Code global commands directory and update the two paths inside it to match where you cloned the repo:
+
+```bash
+cp commands/wp-plugin-standards-review.md ~/.claude/commands/wp-plugin-standards-review.md
+# Then edit the two /path/to/ references in that file to your actual clone location
+```
+
+Once installed, invoke it from any Claude Code session with:
+
+```
+/wp-plugin-standards-review /path/to/my-plugin
+```
+
 ## Usage
 
 Point Claude Code at the skill file before working on any WordPress plugin:
@@ -35,7 +50,9 @@ Claude will produce a findings report and wait for your confirmation before touc
 ### Example session
 
 ```
-Read ~/skills/wp-plugin-standards-claude-skills/SKILL.md then review my plugin at ~/plugins/my-plugin
+/wp-plugin-standards-review ~/plugins/my-plugin
+
+> WordPress Plugin Standards — Review
 
 > WordPress Plugin Standards — Review
 >

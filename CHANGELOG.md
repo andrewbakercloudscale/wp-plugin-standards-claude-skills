@@ -4,6 +4,14 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-12
+
+### Added
+- `commands/wp-plugin-standards-review.md` — slash command template for installing `/wp-plugin-standards-review` in Claude Code
+
+### Changed
+- Slash command renamed from `wp-plugin-standards` to `wp-plugin-standards-review` for clarity
+
 ## [1.0.0] - 2026-03-12
 
 ### Added
