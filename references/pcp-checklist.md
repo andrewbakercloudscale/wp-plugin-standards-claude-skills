@@ -37,6 +37,9 @@ Run every item before finalising any plugin file. The [WordPress Plugin Check pl
 - [ ] No deprecated WordPress functions
 - [ ] No direct DB table creation without first checking whether the table exists
 - [ ] No hardcoded `http://` URLs — use `https://` or `plugin_dir_url()`
+- [ ] No `set_time_limit()` calls — flagged as discouraged by PCP (`Squiz.PHP.DiscouragedFunctions`)
+- [ ] All variables in `uninstall.php` global scope are prefixed with the plugin slug (e.g. `$cs_seo_meta_keys` not `$meta_keys`) — PCP flags `NonPrefixedVariableFound`
+- [ ] All classes in global scope are prefixed with the plugin slug — PCP flags `NonPrefixedClassFound`; add `phpcs:ignore` with explanation if the name genuinely includes the prefix
 
 ## Code reuse
 
@@ -55,8 +58,8 @@ Run every item before finalising any plugin file. The [WordPress Plugin Check pl
 
 - [ ] Every user-facing string wrapped in an i18n function
 - [ ] Correct text domain on every i18n call — plain string literal, never a variable
-- [ ] `load_plugin_textdomain()` called on `init`
-- [ ] Translators comments above every string with placeholders
+- [ ] Do **not** call `load_plugin_textdomain()` — it has been discouraged since WP 4.6; WordPress.org auto-loads translations. Remove any existing call and its hook registration. PCP flags `PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound`.
+- [ ] Every `printf()` / `sprintf()` call whose format string is wrapped in an i18n function **must** have a `/* translators: %s: description */` comment on the line immediately above. PCP flags `WordPress.WP.I18n.MissingTranslatorsComment` without it.
 
 ## Assets
 
