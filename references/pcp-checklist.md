@@ -131,3 +131,4 @@ These are administrative checks that the reviewer performs manually and that aut
 4. Confirm `readme.txt` changelog section has an entry for this version
 5. Confirm `Tested up to` is the current latest stable WordPress release
 6. Confirm no development artefacts are present in the deployed plugin
+7. **Confirm no hidden files in the zip** — run `unzip -l plugin.zip | grep '/\.'` and verify zero results. WordPress.org automated scanning rejects any plugin zip containing dot-files (`.distignore`, `.gitignore`, `.env`, `.DS_Store`, etc.) with the error `hidden_files: Hidden files are not permitted.` Ensure your build script excludes all dot-files from the distribution zip.

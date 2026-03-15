@@ -62,7 +62,7 @@ Severity definitions:
 
 | Severity | Examples |
 |----------|---------|
-| Critical | Echoed `<script>` or `<style>` tags, missing nonce, unescaped output, raw SQL, WordPress.org ownership or contributor mismatch |
+| Critical | Echoed `<script>` or `<style>` tags, missing nonce, unescaped output, raw SQL, WordPress.org ownership or contributor mismatch, hidden files (dot-files) present in the plugin directory |
 | High | Missing capability check, unsanitised input, bare `die()`, hardcoded URLs, missing ABSPATH guard |
 | Medium | Duplicate helper functions, missing DocBlocks, version string mismatch, missing CHANGELOG entry, global asset enqueue |
 | Low | Naming convention violations, missing inline comments, non-autoloaded options, minor i18n issues |
@@ -144,6 +144,7 @@ These apply to every file, every task. No exceptions.
 
 **PCP compliance**
 - No echoed `<script>` or `<style>` tags anywhere — the top WordPress.org rejection reason
+- No hidden files (filenames beginning with `.`) in the plugin directory — WordPress.org automated scan rejects them with `hidden_files` error. Common culprits: `.distignore`, `.gitignore`, `.DS_Store`. Exclude all dot-files from the distribution zip.
 - No `error_log()`, `var_dump()`, `print_r()`, or bare `die()` in committed code
 - No hardcoded URLs — use `plugin_dir_url()` and `plugin_dir_path()`
 - Text domain must match the plugin slug and appear on every translatable string
@@ -180,6 +181,7 @@ After fixes are applied, confirm:
 
 ## Failure modes
 
+- **Hidden files in the distribution zip** — WordPress.org automated scanning rejects any plugin containing files whose names begin with `.` (e.g. `.distignore`, `.gitignore`, `.env`, `.DS_Store`). The error is `hidden_files: Hidden files are not permitted.` Fix: ensure every dot-file is listed in the rsync/zip exclusion rules used to build the distribution package. Check with `unzip -l plugin.zip | grep '/\.'` before submitting.
 - **Echoed `<script>` or `<style>` tags** — the single most common WordPress.org rejection. Grep the entire codebase for `<script` and `<style` before submitting. Every hit is a violation. Use `wp_enqueue_script()`, `wp_add_inline_script()`, `wp_enqueue_style()`, and `wp_add_inline_style()` exclusively. See `references/performance.md`.
 - **Ownership mismatch** — if the submitting WordPress.org username is not in `Contributors:`, or the account email domain does not relate to the plugin's declared URLs, the submission is held. Resolve via DNS TXT record, email change, or account transfer. See `references/pcp-checklist.md` WordPress.org submission section.
 - **Global asset enqueue** — PCP flags CSS/JS enqueued on every page. Always gate on `$hook` in admin, conditional tags on frontend.
