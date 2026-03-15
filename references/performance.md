@@ -135,6 +135,32 @@ Reference: https://make.wordpress.org/core/2021/02/23/introducing-script-attribu
 | Add `defer` / `async` (WP 6.3+) | `strategy` arg in `wp_enqueue_script()` |
 | Add other script attributes | `script_loader_tag` filter |
 
+## WP_Query / get_posts exclusion parameters
+
+`post__not_in` (and `author__not_in`, `tag__not_in`, `category__not_in`) force MySQL to perform
+a full table scan with a `NOT IN` clause. On large sites this can be significantly slower than
+an equivalent positive query. PCP flags these with `WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in`.
+
+**When it is acceptable:**
+- Excluding a small fixed list (1–3 IDs) where the `posts_per_page` cap limits the query scope
+- No practical alternative exists (e.g. excluding the current post from a related-posts pool)
+
+**Required:** Add an inline `phpcs:ignore` comment with a short justification on the same line
+as the `post__not_in` key.
+
+```php
+// Acceptable — excluding current post from a pool capped at 20; no alternative
+$args = [
+    'posts_per_page' => 20,
+    'post__not_in'   => [ $post_id ], // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- pool capped at 20; current post exclusion required
+];
+```
+
+**When to refactor instead:**
+- The exclusion list is dynamic and could grow large (dozens of IDs)
+- The query is run on every page load without caching
+- An alternative query structure exists (e.g. `meta_query`, `tax_query`, or a direct `$wpdb` query with a `NOT IN` on a pre-fetched small list)
+
 ## Database queries
 
 Never run queries inside loops. Fetch all data before iterating.
