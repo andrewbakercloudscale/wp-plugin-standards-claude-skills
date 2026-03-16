@@ -4,6 +4,11 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-03-16
+
+### Fixed
+- `SKILL.md` — never downgrade the `Tested up to` header; WordPress.org rejects submissions with an `outdated_tested_upto_header` error if the value is lower than the current WP release
+
 ## [1.1.0] - 2026-03-15
 
 ### Added
