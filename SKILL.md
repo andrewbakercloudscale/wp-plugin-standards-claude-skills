@@ -65,7 +65,7 @@ Severity definitions:
 | Critical | Echoed `<script>` or `<style>` tags, missing nonce, unescaped output, raw SQL, WordPress.org ownership or contributor mismatch, hidden files (dot-files) present in the plugin directory |
 | High | Missing capability check, unsanitised input, bare `die()`, hardcoded URLs, missing ABSPATH guard |
 | Medium | Duplicate helper functions, missing DocBlocks, version string mismatch, missing CHANGELOG entry, global asset enqueue |
-| Low | Naming convention violations, missing inline comments, non-autoloaded options, minor i18n issues |
+| Low | Naming convention violations, missing inline comments, non-autoloaded options, minor i18n issues, PHPCS false-positive suppressions missing for delegated-nonce handlers (`NonceVerification.Missing`) or WordPress core hook names (`NonPrefixedHooknameFound`) |
 
 **Do not proceed to Step 1 until the user replies with confirmation.**
 
@@ -191,3 +191,12 @@ After fixes are applied, confirm:
 - **Bare `die()`** — use `wp_die()` in HTTP contexts. Bare `die()` is flagged by PCP.
 - **Missing ABSPATH guard** — every included PHP file needs `if ( ! defined( 'ABSPATH' ) ) { exit; }` as its first executable line.
 - **Downgrading `Tested up to`** — WordPress.org automated scanning rejects plugins where `Tested up to` is **lower** than the current WordPress stable release (error: `outdated_tested_upto_header`). Never lower this value during a review. If the value appears to be a future version, verify against wordpress.org/news before acting — the version may simply be ahead of the reviewer's knowledge cutoff. Only ever raise `Tested up to`, never lower it.
+- **`NonceVerification.Missing` false positives via helper delegation** — PHPCS cannot trace nonce verification through a shared helper such as `ajax_check()`. Every `$_POST` access below the helper call is flagged even though the nonce was checked. Fix: wrap the affected `$_POST` reads in a `// phpcs:disable` / `// phpcs:enable` block with an explanation comment naming the helper. Example:
+  ```php
+  $this->ajax_check(); // verifies nonce
+  // phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce checked via ajax_check()
+  $post_id = (int) ( $_POST['post_id'] ?? 0 );
+  // phpcs:enable WordPress.Security.NonceVerification.Missing
+  ```
+  Review every AJAX handler that calls a shared nonce-check helper rather than `check_ajax_referer()` directly. See `references/security.md` §Nonce verification for the full pattern.
+- **`NonPrefixedHooknameFound` for WordPress core hooks** — when a plugin calls `apply_filters()` or `do_action()` using a WordPress core hook name (e.g. `the_content`, `https_local_ssl_verify`, `robots_txt`), PHPCS warns that the hook name does not start with the plugin prefix. This is a false positive — the plugin is *invoking* a core hook, not *registering* its own. Suppress inline: `// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- [hook-name] is a WordPress core filter`. See `references/pcp-checklist.md` §Code quality.

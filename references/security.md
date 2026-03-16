@@ -30,6 +30,37 @@ register_rest_route( 'plugin-slug/v1', '/endpoint', array(
 ) );
 ```
 
+### Delegated nonce verification and PHPCS suppression
+
+When a plugin centralises nonce + capability checks in a shared helper (e.g. `ajax_check()`), PHPCS cannot trace the call and raises `WordPress.Security.NonceVerification.Missing` on every `$_POST` access below the helper, even though the nonce was already verified. This is a false positive.
+
+**Pattern — shared helper with per-handler suppression:**
+
+```php
+// Shared helper (called by all AJAX handlers):
+private function ajax_check(): void {
+    check_ajax_referer( 'my_plugin_nonce', 'nonce' );
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( 'Forbidden', 403 );
+    }
+}
+
+// AJAX handler:
+public function ajax_my_action(): void {
+    $this->ajax_check(); // verifies nonce and capability
+
+    // phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce checked via ajax_check()
+    $post_id = (int) ( $_POST['post_id'] ?? 0 );
+    $value   = sanitize_text_field( wp_unslash( $_POST['value'] ?? '' ) );
+    // phpcs:enable WordPress.Security.NonceVerification.Missing
+}
+```
+
+Rules:
+- The suppression block must be as narrow as possible — open immediately before the first `$_POST` read and close after the last.
+- The inline comment must name the helper (`ajax_check()`) so a reader can verify the nonce is genuinely checked.
+- Do **not** suppress `NonceVerification.Missing` on a handler that does not call `check_ajax_referer()` or `wp_verify_nonce()` somewhere in the call stack — fix the missing check instead.
+
 ## Input sanitisation
 
 Sanitise on the way in. Always unslash superglobals first.

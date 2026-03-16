@@ -40,6 +40,8 @@ Run every item before finalising any plugin file. The [WordPress Plugin Check pl
 - [ ] No `set_time_limit()` calls — flagged as discouraged by PCP (`Squiz.PHP.DiscouragedFunctions`)
 - [ ] All variables in `uninstall.php` global scope are prefixed with the plugin slug (e.g. `$cs_seo_meta_keys` not `$meta_keys`) — PCP flags `NonPrefixedVariableFound`
 - [ ] All classes in global scope are prefixed with the plugin slug — PCP flags `NonPrefixedClassFound`; add `phpcs:ignore` with explanation if the name genuinely includes the prefix
+- [ ] All hook names *registered* by the plugin (`add_filter`, `add_action`, `do_action`, `apply_filters` where the plugin owns the hook) start with the plugin slug prefix — PCP flags `NonPrefixedHooknameFound`
+- [ ] WordPress core hook names *invoked* via `apply_filters()` or `do_action()` are suppressed with an inline `// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- [hook-name] is a WordPress core filter/action` comment. Common examples: `the_content`, `robots_txt`, `https_local_ssl_verify`, `script_loader_tag`, `style_loader_tag`. This is a false positive — the plugin is calling a core hook, not declaring its own.
 
 ## Code reuse
 
