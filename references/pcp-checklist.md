@@ -125,6 +125,54 @@ These are administrative checks that the reviewer performs manually and that aut
 2. Update your WordPress.org profile email to one under the owner's domain
 3. Ask the reviewer to transfer the submission to the correct WordPress.org account
 
+## onclick refactor checklist
+
+Removing inline `onclick` attributes from PHP-rendered buttons is the correct PCP fix, but it must be completed end-to-end or the button silently breaks.
+
+**For every `onclick` attribute removed from a PHP-rendered `<button>` or `<a>`:**
+
+- [ ] The element has a unique `id` attribute added at the same time the `onclick` is removed
+- [ ] A corresponding `addEventListener('click', fn)` call is wired to that `id` in the JS setup block (e.g. inside `DOMContentLoaded`)
+- [ ] **No** `querySelector('[onclick="fnName()"]')` or `querySelector('[onclick*="fnName"]')` remains in the codebase — this selector returns `null` the moment the `onclick` attribute is gone and is therefore self-defeating
+- [ ] The new event binding is tested by clicking the button after deployment
+
+**Pattern — correct replacement:**
+
+```php
+<!-- PHP: was onclick="myFunction()" — add an id instead -->
+<button type="button" id="my-action-btn" class="button">Do thing</button>
+```
+
+```javascript
+// JS: bind by id inside DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('my-action-btn');
+    if (btn) btn.addEventListener('click', function() { myFunction(); });
+});
+```
+
+**Anti-pattern — do NOT do this:**
+
+```javascript
+// BROKEN: querySelector finds nothing once onclick is removed
+var btn = document.querySelector('[onclick="myFunction()"]');
+if (btn) {
+    btn.removeAttribute('onclick');          // onclick is already gone
+    btn.addEventListener('click', myFunction); // never reached
+}
+```
+
+**Grep to catch leftovers before submitting:**
+
+```bash
+# Find any remaining onclick-as-selector patterns in JS
+grep -r "querySelector.*\[onclick" includes/
+# Find PHP-rendered buttons with no id (review manually)
+grep -n "<button" includes/*.php | grep -v ' id='
+```
+
+Note: `onclick` attributes inside JavaScript **string literals** (e.g. `innerHTML` assignments, template literals building table rows) are not a PCP violation — they are JS code, not PHP-rendered HTML attributes. Only `onclick` attributes written directly in PHP `echo`/heredoc output require removal.
+
 ## Pre-submission final check
 
 1. Run Plugin Check plugin locally — confirm zero errors and zero warnings
