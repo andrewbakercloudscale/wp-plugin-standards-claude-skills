@@ -136,3 +136,53 @@ if ( false === $result ) {
     return new WP_Error( 'file_read_failed', esc_html__( 'Could not read file.', 'my-plugin' ) );
 }
 ```
+
+## JavaScript async error handling
+
+Every `async` function called from an `onclick` attribute or event listener **must** wrap its
+body in `try/catch`. Without this, any runtime error (e.g. calling `.style` on a non-existent
+element, a failed `fetch`, or a non-JSON response) causes the Promise to reject silently —
+no error surface, no user feedback, the operation just stops. This is the root cause of
+"button does nothing" bugs.
+
+**Required pattern:**
+
+```js
+// Error helper — logs to console and shows message in a status element
+function myPluginErr(label, err) {
+    console.error('[my-plugin] ' + label, err);
+    const st = document.getElementById('my-status');
+    if (st) st.textContent = 'Error: ' + (err ? err.message : label);
+}
+
+async function myPluginLoad() {
+    try {
+        const fd = new FormData();
+        fd.append('action', 'my_plugin_action');
+        fd.append('nonce', myPluginData.nonce);
+        const r = await fetch(myPluginData.ajaxUrl, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.success) { myPluginErr('Server returned error', null); return; }
+        // ... handle success ...
+    } catch (err) {
+        myPluginErr('myPluginLoad', err);
+    }
+}
+```
+
+**Rules:**
+- Every `async` function gets a `try/catch` — no exceptions.
+- The `catch` block **must** call `console.error()` (developer visibility) AND update a
+  visible status element (user visibility). Silent `catch` blocks are not acceptable.
+- Loops that call `async` functions (e.g. batch processing) should use `try/catch` per-call
+  so a single failure does not abort the whole batch, and use `finally` to re-enable
+  disabled buttons.
+- All `document.getElementById()` calls must be null-checked before accessing properties
+  on the result. An unchecked null will throw inside an async function and kill it silently
+  if not wrapped in try/catch.
+
+**Audit checklist:**
+- [ ] Every `async function` has `try { ... } catch(err) { ... }` wrapping its body
+- [ ] Every `catch` logs with `console.error()` and surfaces a message to the user
+- [ ] Buttons disabled at the start of an operation are re-enabled in `finally {}`
+- [ ] All `getElementById` results are null-checked before property access

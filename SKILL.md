@@ -64,7 +64,7 @@ Severity definitions:
 |----------|---------|
 | Critical | Echoed `<script>` or `<style>` tags, missing nonce, unescaped output, raw SQL, WordPress.org ownership or contributor mismatch, hidden files (dot-files) present in the plugin directory |
 | High | Missing capability check, unsanitised input, bare `die()`, hardcoded URLs, missing ABSPATH guard |
-| Medium | Duplicate helper functions, missing DocBlocks, version string mismatch, missing CHANGELOG entry, global asset enqueue |
+| Medium | Duplicate helper functions, missing DocBlocks, version string mismatch, missing CHANGELOG entry, global asset enqueue, `async` JS function without `try/catch` (silent failure), `catch` block with no `console.error()` or user-visible message, `getElementById()` result used without null check |
 | Low | Naming convention violations, missing inline comments, non-autoloaded options, minor i18n issues, PHPCS false-positive suppressions missing for delegated-nonce handlers (`NonceVerification.Missing`) or WordPress core hook names (`NonPrefixedHooknameFound`) |
 
 **Do not proceed to Step 1 until the user replies with confirmation.**
@@ -200,4 +200,6 @@ After fixes are applied, confirm:
   // phpcs:enable WordPress.Security.NonceVerification.Missing
   ```
   Review every AJAX handler that calls a shared nonce-check helper rather than `check_ajax_referer()` directly. See `references/security.md` §Nonce verification for the full pattern.
+- **Unhandled async function rejections (silent JS failures)** — `async` functions called from `onclick` attributes return a Promise. If that Promise rejects (due to any runtime error — including calling `.style` on a null `getElementById` result, a network failure, or non-JSON response), the rejection is silently swallowed by the browser. The function stops mid-execution with no error message, no user feedback, and no console output unless `console.error()` is explicitly called in a `catch` block. The symptom is a button that appears to work but produces no result. **Audit rule:** every `async` function must wrap its entire body in `try { ... } catch(err) { console.error(...); /* show user message */ }`. Loops that call async functions should re-enable disabled buttons in `finally {}`. All `getElementById()` results must be null-checked before property access. See `references/coding-standards.md` §JavaScript async error handling.
+
 - **`NonPrefixedHooknameFound` for WordPress core hooks** — when a plugin calls `apply_filters()` or `do_action()` using a WordPress core hook name (e.g. `the_content`, `https_local_ssl_verify`, `robots_txt`), PHPCS warns that the hook name does not start with the plugin prefix. This is a false positive — the plugin is *invoking* a core hook, not *registering* its own. Suppress inline: `// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- [hook-name] is a WordPress core filter`. See `references/pcp-checklist.md` §Code quality.
