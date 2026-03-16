@@ -190,3 +190,4 @@ After fixes are applied, confirm:
 - **Version mismatch** — if the three version strings differ, WordPress.org validation will fail.
 - **Bare `die()`** — use `wp_die()` in HTTP contexts. Bare `die()` is flagged by PCP.
 - **Missing ABSPATH guard** — every included PHP file needs `if ( ! defined( 'ABSPATH' ) ) { exit; }` as its first executable line.
+- **Downgrading `Tested up to`** — WordPress.org automated scanning rejects plugins where `Tested up to` is **lower** than the current WordPress stable release (error: `outdated_tested_upto_header`). Never lower this value during a review. If the value appears to be a future version, verify against wordpress.org/news before acting — the version may simply be ahead of the reviewer's knowledge cutoff. Only ever raise `Tested up to`, never lower it.

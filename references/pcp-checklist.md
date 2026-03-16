@@ -7,7 +7,7 @@ Run every item before finalising any plugin file. The [WordPress Plugin Check pl
 - [ ] `Plugin Name` present and unique
 - [ ] `Version` matches `VERSION` constant and `readme.txt` `Stable tag`
 - [ ] `Requires at least` present with a valid WP version
-- [ ] `Tested up to` is the current latest stable WP release
+- [ ] `Tested up to` is ≥ the current WordPress stable release — WordPress.org automated scanning rejects submissions where this value is **lower** than the current stable (`outdated_tested_upto_header`). **Never downgrade this value during a review.** If the existing value looks like an unreleased version, verify against wordpress.org/news before changing it — it may simply be ahead of your knowledge cutoff. The safe rule: only raise this value, never lower it.
 - [ ] `Requires PHP` present, minimum 7.4 (8.0 recommended)
 - [ ] `License` is `GPLv2 or later` or a compatible licence
 - [ ] `License URI` is correct
