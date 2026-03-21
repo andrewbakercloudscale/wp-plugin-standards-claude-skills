@@ -31,6 +31,9 @@ until the user explicitly confirms they want to proceed after reviewing the repo
 
 ### Step 0 — Review report (always first)
 
+**Before scanning files, derive the expected WordPress.org slug:**
+Take the `Plugin Name:` header value, lowercase it, replace spaces with hyphens, and strip special characters. This is the expected `Text Domain:` value. If the plugin header `Text Domain:` does not match this derived slug, flag it as **Critical** immediately — this generates 70+ errors in PCP. Example: "CloudScale Free Backup and Restore" → `cloudscale-free-backup-and-restore`.
+
 Scan all plugin files and produce a findings report grouped by severity before
 doing anything else. Use this exact format:
 
@@ -147,9 +150,24 @@ These apply to every file, every task. No exceptions.
 - No hidden files (filenames beginning with `.`) in the plugin directory — WordPress.org automated scan rejects them with `hidden_files` error. Common culprits: `.distignore`, `.gitignore`, `.DS_Store`. Exclude all dot-files from the distribution zip.
 - No `error_log()`, `var_dump()`, `print_r()`, or bare `die()` in committed code
 - No hardcoded URLs — use `plugin_dir_url()` and `plugin_dir_path()`
-- Text domain must match the plugin slug and appear on every translatable string
+- **Text domain must match the WordPress.org plugin slug** — the slug is derived from the plugin *name*, not the folder name (e.g. "My Cool Plugin" → `my-cool-plugin`). PCP reports `textdomain_mismatch` and `WordPress.WP.I18n.TextDomainMismatch` on every i18n call if wrong. Always verify: slugify the plugin name and confirm it matches `Text Domain:` in the header.
 - All enqueued assets versioned with the plugin version constant
 - WordPress.org `Contributors:` field must match the submitting username; email domain must relate to the plugin's declared URLs
+- **No `date()`** — use `gmdate()` (UTC) or `wp_date()` (localised). PCP flags `WordPress.DateTime.RestrictedFunctions.date_date` as an error on every `date()` call.
+- **No `unlink()`** — use `wp_delete_file()`. PCP flags `WordPress.WP.AlternativeFunctions.unlink_unlink`.
+- **No `rmdir()` or `readfile()`** — use WP Filesystem API. PCP flags these as errors.
+- **`wp_die()` must receive escaped strings** — `wp_die( esc_html__( 'Forbidden', 'slug' ) )` not `wp_die( 'Forbidden' )`. PCP flags `EscapeOutput.OutputNotEscaped`.
+- **Every echoed variable must be escaped** — including intermediate variables that only hold safe values (e.g. `'checked'`, hex colours, pre-computed CSS class strings). PCP's `EscapeOutput.OutputNotEscaped` fires on any unescaped variable. No exceptions. **Specific context rule:** variables echoed inside `onclick="..."` attributes must use `esc_js()`, not `esc_attr()`. A variable already sanitised earlier (e.g. `$row_ami_id = esc_attr(...)`) still triggers the error if re-echoed without wrapping — always escape at the point of output.
+- **`wp_unslash()` required before every `sanitize_*()`** on superglobal input — `sanitize_text_field( wp_unslash( $_POST['field'] ?? '' ) )`. PCP flags `MissingUnslash` otherwise.
+- **`InputNotSanitized`** — PCP flags `$_POST` array values even when they are validated via `array_map('intval', ...)` or `array_intersect()` against a whitelist. Add `// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitised via [method]` on those lines.
+- **`set_time_limit()` with non-zero values** (e.g. `set_time_limit(120)`) also triggers `Squiz.PHP.DiscouragedFunctions` — the suppress pattern applies to all values, not just `set_time_limit(0)`.
+- **Schema queries (`SHOW CREATE TABLE`, `DESCRIBE`)** require `WordPress.DB.DirectDatabaseQuery.SchemaChange` in addition to `DirectQuery` and `NoCaching` in the phpcs:ignore list.
+- **Multi-line `$wpdb->prepare()` calls** — when a `phpcs:ignore` comment sits on the line above a multi-line statement, it only suppresses the first line. Use `phpcs:disable` / `phpcs:enable` blocks to cover all lines of multi-line DB calls containing interpolated table names.
+- **readme.txt: max 5 tags, max 150-char short description** — PCP flags both violations.
+- **Direct cURL** (`curl_init` etc.) flagged by PCP — use `wp_remote_get()` / `wp_remote_post()` where possible; suppress with `phpcs:ignore WordPress.WP.AlternativeFunctions.curl_*` and a comment explaining why `wp_remote_get()` is insufficient (e.g. sub-second timeout requirement).
+- **`set_time_limit()`** flagged as discouraged — add `// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- required to prevent PHP timeout on large backups` on each call.
+- **Direct DB queries** (`$wpdb->query()` etc.) flagged as discouraged — add `// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- [reason]` on each call.
+- **`NonceVerification.Missing` false positives** — AJAX handlers using a shared nonce-check helper must add `// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified via [helper]()` / `// phpcs:enable` blocks around every `$_POST`/`$_GET`/`$_FILES` read.
 
 ---
 
@@ -201,5 +219,15 @@ After fixes are applied, confirm:
   ```
   Review every AJAX handler that calls a shared nonce-check helper rather than `check_ajax_referer()` directly. See `references/security.md` §Nonce verification for the full pattern.
 - **Unhandled async function rejections (silent JS failures)** — `async` functions called from `onclick` attributes return a Promise. If that Promise rejects (due to any runtime error — including calling `.style` on a null `getElementById` result, a network failure, or non-JSON response), the rejection is silently swallowed by the browser. The function stops mid-execution with no error message, no user feedback, and no console output unless `console.error()` is explicitly called in a `catch` block. The symptom is a button that appears to work but produces no result. **Audit rule:** every `async` function must wrap its entire body in `try { ... } catch(err) { console.error(...); /* show user message */ }`. Loops that call async functions should re-enable disabled buttons in `finally {}`. All `getElementById()` results must be null-checked before property access. See `references/coding-standards.md` §JavaScript async error handling.
+
+- **PCP errors missed during manual review** — the review skill catches patterns by reading code, but PCP runs PHPCS rules mechanically and flags things that look fine to a human reader (e.g. a variable holding `'checked'` that is never user-controlled, but still needs `esc_attr()`; or `date()` used on a timestamp the developer controls). **The only way to guarantee zero PCP errors is to run the WordPress Plugin Check plugin locally before submission.** The review skill is a guide, not a substitute for a live PCP run. Always treat PCP output as the ground truth. Critical PCP-only catches:
+  - `date()` → `gmdate()` (any `date()` call, regardless of context)
+  - `unlink()` → `wp_delete_file()`
+  - `rmdir()` / `readfile()` → WP Filesystem
+  - `wp_die('string')` → `wp_die( esc_html__( 'string', 'slug' ) )`
+  - Any unescaped intermediate variable in HTML output
+  - Missing `wp_unslash()` on superglobals
+  - Text domain not matching WordPress.org slug (derived from plugin *name*, not folder)
+  - readme.txt: >5 tags, >150-char short description
 
 - **`NonPrefixedHooknameFound` for WordPress core hooks** — when a plugin calls `apply_filters()` or `do_action()` using a WordPress core hook name (e.g. `the_content`, `https_local_ssl_verify`, `robots_txt`), PHPCS warns that the hook name does not start with the plugin prefix. This is a false positive — the plugin is *invoking* a core hook, not *registering* its own. Suppress inline: `// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- [hook-name] is a WordPress core filter`. See `references/pcp-checklist.md` §Code quality.

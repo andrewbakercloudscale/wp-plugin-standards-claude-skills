@@ -11,7 +11,7 @@ Run every item before finalising any plugin file. The [WordPress Plugin Check pl
 - [ ] `Requires PHP` present, minimum 7.4 (8.0 recommended)
 - [ ] `License` is `GPLv2 or later` or a compatible licence
 - [ ] `License URI` is correct
-- [ ] `Text Domain` matches the plugin directory slug exactly
+- [ ] `Text Domain` matches the WordPress.org plugin slug exactly. **Critical:** WordPress.org derives the slug from the plugin *name*, not the folder name. "CloudScale Free Backup and Restore" → slug `cloudscale-free-backup-and-restore`. PCP reports `textdomain_mismatch` and `WordPress.WP.I18n.TextDomainMismatch` on every translatable string if the header `Text Domain:` does not match. Verify: slugify the plugin name (lowercase, hyphens) and confirm it matches `Text Domain:` in the header.
 - [ ] `Domain Path` present if `.pot` files are included
 - [ ] No trailing whitespace or BOM in the main plugin file
 
@@ -32,6 +32,22 @@ Run every item before finalising any plugin file. The [WordPress Plugin Check pl
 - [ ] No `error_log()` outside the Utils logger (gated on `WP_DEBUG_LOG`)
 - [ ] No `var_dump()`, `print_r()`, `debug_print_backtrace()` in committed code
 - [ ] No bare `die()` or `exit()` — use `wp_die()` in HTTP contexts
+- [ ] Every `wp_die()` call passes an **escaped** string — `wp_die( esc_html__( 'Forbidden', 'text-domain' ) )` not `wp_die( 'Forbidden' )`. PCP flags `WordPress.Security.EscapeOutput.OutputNotEscaped` on unescaped `wp_die` arguments.
+- [ ] No `date()` — use `gmdate()` for UTC timestamps or `wp_date()` for timezone-localised display. PCP flags `WordPress.DateTime.RestrictedFunctions.date_date` on every `date()` call.
+- [ ] No `unlink()` — use `wp_delete_file()`. PCP flags `WordPress.WP.AlternativeFunctions.unlink_unlink`.
+- [ ] No `rmdir()` — use WP Filesystem API (`$wp_filesystem->rmdir()`). PCP flags `WordPress.WP.AlternativeFunctions.file_system_operations_rmdir`.
+- [ ] No `readfile()` — use WP Filesystem API. PCP flags `WordPress.WP.AlternativeFunctions.file_system_operations_readfile`.
+- [ ] No direct cURL (`curl_init`, `curl_exec`, etc.) — use `wp_remote_get()` / `wp_remote_post()`. PCP flags `WordPress.WP.AlternativeFunctions.curl_*`. **Exception:** if `wp_remote_get()` cannot satisfy a hard requirement (e.g. sub-second connect timeout for AWS IMDS), suppress with `// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_init, WordPress.WP.AlternativeFunctions.curl_curl_setopt_array, WordPress.WP.AlternativeFunctions.curl_curl_exec, WordPress.WP.AlternativeFunctions.curl_curl_getinfo, WordPress.WP.AlternativeFunctions.curl_curl_close -- wp_remote_get() does not support sub-second connect timeouts required for IMDS`.
+- [ ] No `set_time_limit()` without a `phpcs:ignore` — PCP flags `Squiz.PHP.DiscouragedFunctions.Discouraged`. Suppress with `// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- required to prevent PHP timeout on large backups`.
+- [ ] All superglobal arrays (`$_POST`, `$_GET`, `$_FILES`, `$_SERVER`) run through `wp_unslash()` before any sanitisation function. PCP flags `WordPress.Security.ValidatedSanitizedInput.MissingUnslash` otherwise. Pattern: `sanitize_text_field( wp_unslash( $_POST['field'] ?? '' ) )`.
+- [ ] **All** variables echoed into HTML — including intermediate variables that only hold safe values like `'checked'`, hex colour codes, or pre-escaped attribute strings — must be wrapped in the appropriate `esc_*()` function. Variables inside `onclick="..."` JavaScript attributes must use `esc_js()`. A variable already assigned via `esc_attr()` earlier still requires wrapping at the point of output — escape at output, not at assignment.
+- [ ] `InputNotSanitized` — when array input is validated via `array_map('intval', ...)` or `array_intersect()` against a whitelist rather than a named `sanitize_*()` function, add `// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitised via [method]`.
+- [ ] Schema introspection queries (`SHOW CREATE TABLE`, `DESCRIBE`) require `WordPress.DB.DirectDatabaseQuery.SchemaChange` in the phpcs:ignore list in addition to `DirectQuery` and `NoCaching`.
+- [ ] Multi-line `$wpdb->prepare()` calls containing interpolated table names — use `phpcs:disable` / `phpcs:enable` blocks rather than `phpcs:ignore` so the suppression covers all lines of the statement. PCP's `WordPress.Security.EscapeOutput.OutputNotEscaped` fires on any unescaped variable regardless of its contents. Specifically audit: closures that return attribute strings (e.g. `$mc('key', true)` → `echo $mc(...)` must be `echo esc_attr( $mc(...) )`), inline style variables containing hex colours, AMI table row ID variables used in `id=` or `onclick=` attributes.
+- [ ] Direct DB queries (`$wpdb->query()`, `$wpdb->get_results()`, etc.) suppress `WordPress.DB.DirectDatabaseQuery.DirectQuery` and `WordPress.DB.DirectDatabaseQuery.NoCaching` with `// phpcs:ignore` and an explanation. For backup/restore plugins this is expected and always intentional.
+- [ ] Interpolated table names in `$wpdb->prepare()` — suppress `WordPress.DB.PreparedSQL.InterpolatedNotPrepared` with `// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $safe_table is sanitised via esc_sql()`.
+- [ ] `NonceVerification.Missing` false positives — all AJAX handlers that use a shared nonce-check helper must add `// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified via cs_verify_nonce()` / `// phpcs:enable` blocks around every `$_POST`/`$_GET`/`$_FILES` read.
+- [ ] No `set_time_limit()` calls without suppression — add `// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- required to prevent PHP timeout on large backups` on every instance.
 - [ ] No closing `?>` at end of PHP-only files
 - [ ] No short open tags `<?`
 - [ ] No deprecated WordPress functions
@@ -81,6 +97,8 @@ This section is the most common source of WordPress.org submission rejections. G
 
 ## File and folder structure
 
+- [ ] `readme.txt` — `Tags:` line has **5 tags maximum** — PCP flags `readme_parser_warnings_too_many_tags` if exceeded
+- [ ] `readme.txt` — short description (the single line below the header block) is **150 characters maximum** — PCP flags `readme_parser_warnings_trimmed_short_description` if longer
 - [ ] `readme.txt` present in plugin root
 - [ ] `uninstall.php` present and removes all plugin data
 - [ ] No `.git`, `.svn`, `node_modules`, or `vendor` in the deployed plugin
