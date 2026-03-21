@@ -4,6 +4,21 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-03-21
+
+### Added
+- `SKILL.md` — text domain slug derivation rule: derive expected slug from `Plugin Name:` header before scanning; flag mismatch as Critical immediately
+- `SKILL.md` + `references/pcp-checklist.md` — `date()` → `gmdate()`/`wp_date()`, `unlink()` → `wp_delete_file()`, `rmdir()`/`readfile()` → WP Filesystem API
+- `SKILL.md` + `references/pcp-checklist.md` — `wp_die()` must receive an escaped string; unescaped literal triggers `EscapeOutput.OutputNotEscaped`
+- `SKILL.md` + `references/pcp-checklist.md` — `wp_unslash()` required before every `sanitize_*()` on superglobal input
+- `SKILL.md` + `references/pcp-checklist.md` — `InputNotSanitized` false positives: `array_map('intval')` / `array_intersect()` validation requires inline `phpcs:ignore`
+- `SKILL.md` + `references/pcp-checklist.md` — direct cURL (`curl_init` etc.) suppression pattern with justification comment
+- `SKILL.md` + `references/pcp-checklist.md` — `set_time_limit()` discouraged function suppression pattern
+- `SKILL.md` + `references/pcp-checklist.md` — schema queries (`SHOW CREATE TABLE`, `DESCRIBE`) require `SchemaChange` in phpcs:ignore list
+- `SKILL.md` + `references/pcp-checklist.md` — multi-line `$wpdb->prepare()` calls need `phpcs:disable`/`phpcs:enable` blocks, not single-line `phpcs:ignore`
+- `references/pcp-checklist.md` — `readme.txt` limits: max 5 tags, max 150-char short description
+- `SKILL.md` — "PCP errors missed during manual review" callout: PCP is ground truth; lists critical PCP-only catches
+
 ## [1.1.2] - 2026-03-16
 
 ### Added
