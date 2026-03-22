@@ -154,3 +154,117 @@ Sanitise before saving. Escape on output. Treat stored values as untrusted.
 update_option( 'my_plugin_setting', sanitize_text_field( $value ) );
 echo esc_html( get_option( 'my_plugin_setting', '' ) );
 ```
+
+## Admin access control
+
+Admin pages must never be publicly reachable. Three layers are required:
+
+**1. Correct capability on registration** — never use `'read'` (granted to Subscribers):
+
+```php
+add_menu_page( ..., 'manage_options', 'my-plugin', array( $this, 'render_page' ) );
+```
+
+**2. Capability re-check in the render callback:**
+
+```php
+public function render_page(): void {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( esc_html__( 'You do not have permission to view this page.', 'plugin-slug' ) );
+    }
+}
+```
+
+**3. ABSPATH guard + capability check in every partial template** (`admin/partials/*.php`):
+
+```php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! current_user_can( 'manage_options' ) ) {
+    wp_die( esc_html__( 'Forbidden.', 'plugin-slug' ) );
+}
+```
+
+`is_admin()` checks whether the admin area is loaded — not whether the user is an
+administrator. **Never use `is_admin()` as an access control check.**
+
+## Object injection
+
+Never call `unserialize()` on user-supplied data or any externally-sourced value.
+Use `json_decode()` instead:
+
+```php
+// WRONG
+$data = unserialize( base64_decode( $_POST['payload'] ) );
+
+// CORRECT
+$data = json_decode( wp_unslash( $_POST['payload'] ?? '' ), true );
+if ( ! is_array( $data ) ) {
+    wp_send_json_error( 'Invalid data.' );
+}
+```
+
+`maybe_unserialize()` is safe only for values your own plugin previously serialised
+and stored. Never call it on user input or third-party option values.
+
+## Open redirect
+
+Use `wp_safe_redirect()` for any redirect that follows a user-supplied URL.
+`wp_safe_redirect()` blocks cross-domain redirects:
+
+```php
+$url = esc_url_raw( wp_unslash( $_GET['redirect'] ?? '' ) );
+wp_safe_redirect( $url );
+exit;
+```
+
+For legitimate cross-domain redirects, use an explicit domain allowlist rather
+than `wp_redirect()` directly.
+
+## Path traversal
+
+Validate every file path built from user input:
+
+```php
+$file     = sanitize_file_name( wp_unslash( $_GET['file'] ?? '' ) );
+$base_dir = realpath( plugin_dir_path( __FILE__ ) . 'templates/' );
+$full     = realpath( $base_dir . DIRECTORY_SEPARATOR . $file );
+
+if ( validate_file( $file ) !== 0 || ! $full || strpos( $full, $base_dir ) !== 0 ) {
+    wp_die( esc_html__( 'Invalid file.', 'plugin-slug' ) );
+}
+```
+
+`validate_file()` returns `0` for safe paths, non-zero for traversal attempts.
+
+## SSRF (Server-Side Request Forgery)
+
+Never pass a user-supplied URL directly to `wp_remote_get()` / `wp_remote_post()`:
+
+```php
+$url = esc_url_raw( wp_unslash( $_POST['url'] ?? '' ) );
+if ( ! wp_http_validate_url( $url ) ) {
+    wp_send_json_error( 'Invalid URL.' );
+}
+wp_remote_get( $url );
+```
+
+WordPress 5.9+ blocks private IP ranges by default. Do not override
+`http_request_host_is_external` to re-allow internal requests.
+
+## IDOR (Insecure Direct Object Reference)
+
+Check the specific object capability, not just the generic one:
+
+```php
+// WRONG — any editor can read any post ID
+if ( ! current_user_can( 'edit_posts' ) ) { wp_die(...); }
+
+// CORRECT — only editors with access to this specific post
+if ( ! current_user_can( 'edit_post', absint( $_GET['post_id'] ) ) ) { wp_die(...); }
+```
+
+## Full cyber security reference
+
+See `references/cyber-security.md` for the complete OWASP Top 10 WordPress mapping,
+file upload safety, privilege escalation patterns, XXE, race conditions, and the
+full audit checklist.

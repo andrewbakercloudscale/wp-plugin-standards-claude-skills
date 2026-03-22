@@ -4,6 +4,18 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-03-22
+
+### Added
+- `references/cyber-security.md` — new comprehensive reference: admin access control (menu capabilities, render callbacks, partial templates, AJAX hook split, REST permission callbacks), OWASP Top 10 mapped to WordPress (A01–A10), and WordPress-specific vectors: open redirect (`wp_safe_redirect`), path traversal (`validate_file` + `realpath` boundary), SSRF (`wp_http_validate_url`), PHP object injection (`unserialize` ban), shell injection, file upload safety (`wp_check_filetype_and_ext`, executable extension blocklist, `wp_handle_upload`), privilege escalation, IDOR (object-level `current_user_can`), XXE, race conditions, `is_admin()` misuse, and information disclosure
+- `references/security.md` — new sections: Admin access control, Object injection, Open redirect, Path traversal, SSRF, IDOR, with cross-reference to cyber-security.md
+- `references/pcp-checklist.md` — new §Cyber security checklist section covering all the above vectors as actionable checkboxes
+- `SKILL.md` — Critical severity expanded: admin page publicly reachable, REST `__return_true` permission callback, `unserialize()` on user input, file upload without MIME validation, shell execution with user input
+- `SKILL.md` — High severity expanded: admin menu `'read'` capability, open redirect, SSRF, path traversal, `is_admin()` misuse, hardcoded credentials, IDOR
+- `SKILL.md` — Medium severity expanded: `wp_ajax_nopriv_` on admin-only action, `maybe_unserialize()` on external options
+- `SKILL.md` — four new failure modes documented: admin page publicly reachable, `is_admin()` misuse, `unserialize()` object injection, `__return_true` REST permission callback
+- `SKILL.md` — `references/cyber-security.md` added to Step 2 and References table
+
 ## [1.1.3] - 2026-03-21
 
 ### Added

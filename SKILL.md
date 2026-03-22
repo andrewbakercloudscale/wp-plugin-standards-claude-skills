@@ -65,9 +65,9 @@ Severity definitions:
 
 | Severity | Examples |
 |----------|---------|
-| Critical | Echoed `<script>` or `<style>` tags, missing nonce, unescaped output, raw SQL, WordPress.org ownership or contributor mismatch, hidden files (dot-files) present in the plugin directory |
-| High | Missing capability check, unsanitised input, bare `die()`, hardcoded URLs, missing ABSPATH guard |
-| Medium | Duplicate helper functions, missing DocBlocks, version string mismatch, missing CHANGELOG entry, global asset enqueue, `async` JS function without `try/catch` (silent failure), `catch` block with no `console.error()` or user-visible message, `getElementById()` result used without null check |
+| Critical | Echoed `<script>` or `<style>` tags, missing nonce, unescaped output, raw SQL, WordPress.org ownership or contributor mismatch, hidden files (dot-files) present in the plugin directory, admin page reachable without authentication, REST endpoint with `'__return_true'` permission callback, `unserialize()` on user-supplied data, file upload without MIME validation, shell execution with user input |
+| High | Missing capability check, unsanitised input, bare `die()`, hardcoded URLs, missing ABSPATH guard, admin menu using `'read'` capability, `wp_redirect()` on user-supplied URL (open redirect), user-supplied URL passed to `wp_remote_get()` (SSRF), file path built from user input without traversal check, `is_admin()` used as access-control check, hardcoded API keys or credentials, IDOR (object-level capability not checked) |
+| Medium | Duplicate helper functions, missing DocBlocks, version string mismatch, missing CHANGELOG entry, global asset enqueue, `async` JS function without `try/catch` (silent failure), `catch` block with no `console.error()` or user-visible message, `getElementById()` result used without null check, `wp_ajax_nopriv_` used for an admin-only action, `maybe_unserialize()` on externally-sourced option values |
 | Low | Naming convention violations, missing inline comments, non-autoloaded options, minor i18n issues, PHPCS false-positive suppressions missing for delegated-nonce handlers (`NonceVerification.Missing`) or WordPress core hook names (`NonPrefixedHooknameFound`) |
 
 **Do not proceed to Step 1 until the user replies with confirmation.**
@@ -80,8 +80,8 @@ the helper does not already exist there (see `references/reuse.md`).
 ### Step 2 — Apply fixes
 
 Apply fixes for the severity levels the user confirmed. Use `references/security.md`,
-`references/coding-standards.md`, `references/performance.md`, and
-`references/accessibility.md` as you go.
+`references/cyber-security.md`, `references/coding-standards.md`,
+`references/performance.md`, and `references/accessibility.md` as you go.
 
 ### Step 3 — PCP checklist
 
@@ -189,6 +189,7 @@ After fixes are applied, confirm:
 | File | Read when |
 |------|-----------|
 | `references/security.md` | Any input, output, DB, AJAX, REST, or capability work |
+| `references/cyber-security.md` | Admin screens, access control, OWASP checks, file upload, SSRF, open redirect, path traversal, object injection |
 | `references/coding-standards.md` | Always — naming, DocBlocks, formatting, i18n, error handling |
 | `references/performance.md` | Asset enqueuing, DB queries, transients, background tasks |
 | `references/accessibility.md` | Any admin UI, forms, notices, or modal dialogs |
@@ -229,5 +230,13 @@ After fixes are applied, confirm:
   - Missing `wp_unslash()` on superglobals
   - Text domain not matching WordPress.org slug (derived from plugin *name*, not folder)
   - readme.txt: >5 tags, >150-char short description
+
+- **Admin page publicly reachable** — registering an admin menu with `'read'` capability or omitting a `current_user_can()` check in the render callback makes the page accessible to any logged-in user (Subscribers, Customers). The `add_menu_page()` capability must be at least `'manage_options'` for administrator-only screens. Every render callback and every file in `admin/partials/` must independently re-check the required capability — WordPress only enforces the capability at the menu registration level if the page is reached via the admin menu. Direct URL access bypasses that check. See `references/cyber-security.md §Admin access control`.
+
+- **`is_admin()` used as an access-control check** — `is_admin()` returns `true` whenever WordPress is serving any admin area request, including AJAX calls triggered from the frontend. A subscriber can send an AJAX request with `is_admin()` returning `true`. It is not an authentication or authorisation check. Always use `current_user_can()`.
+
+- **`unserialize()` on user-supplied or option data** — PHP object injection via a crafted serialised string can trigger arbitrary object destructors and methods, potentially leading to remote code execution. Never deserialise any value that originated outside your own plugin's write path. Use `json_decode()` for all data exchange. See `references/cyber-security.md §A08`.
+
+- **`'__return_true'` as REST permission_callback** — makes the endpoint world-readable with no authentication. Every REST endpoint that reads or modifies data must have a non-trivial `permission_callback`. See `references/cyber-security.md §REST API endpoints`.
 
 - **`NonPrefixedHooknameFound` for WordPress core hooks** — when a plugin calls `apply_filters()` or `do_action()` using a WordPress core hook name (e.g. `the_content`, `https_local_ssl_verify`, `robots_txt`), PHPCS warns that the hook name does not start with the plugin prefix. This is a false positive — the plugin is *invoking* a core hook, not *registering* its own. Suppress inline: `// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- [hook-name] is a WordPress core filter`. See `references/pcp-checklist.md` §Code quality.

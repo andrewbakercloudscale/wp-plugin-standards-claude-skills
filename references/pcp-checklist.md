@@ -15,6 +15,63 @@ Run every item before finalising any plugin file. The [WordPress Plugin Check pl
 - [ ] `Domain Path` present if `.pot` files are included
 - [ ] No trailing whitespace or BOM in the main plugin file
 
+## Cyber security
+
+These checks go beyond PCP compliance. See `references/cyber-security.md` for
+code patterns and explanations.
+
+### Admin access control
+
+- [ ] Every `add_menu_page()` / `add_submenu_page()` uses a capability that is **not** `'read'` — `'read'` is granted to Subscribers; use `'manage_options'` or more specific capabilities
+- [ ] Every admin page render callback starts with `current_user_can()` — WordPress only enforces the menu capability when reached via the admin menu; direct URL access bypasses it
+- [ ] Every file in `admin/partials/` has both an ABSPATH guard (`exit;`) and a `current_user_can()` check
+- [ ] No admin-only AJAX action registered on `wp_ajax_nopriv_` — that hook fires for logged-out users
+- [ ] All `admin_post_{action}` handlers call `check_admin_referer()` and `current_user_can()`
+- [ ] No REST endpoint uses `'__return_true'` as `permission_callback`
+- [ ] `is_admin()` is not used as an access-control check — it checks whether the admin area is loaded, not whether the user is an administrator; use `current_user_can()` instead
+
+### Injection and deserialisation
+
+- [ ] No `unserialize()` on user-supplied, cookie, or URL data — use `json_decode()`
+- [ ] No `maybe_unserialize()` on externally-sourced or third-party option values
+- [ ] No `exec()`, `system()`, `passthru()`, `shell_exec()`, `proc_open()`, or `popen()` with user-controlled input
+- [ ] XML parsed with `LIBXML_NONET | LIBXML_NOENT` flags and `libxml_disable_entity_loader(true)` (PHP < 8)
+
+### File upload
+
+- [ ] File type validated server-side via `wp_check_filetype_and_ext()` — `$_FILES['type']` is client-supplied and not trusted
+- [ ] Executable file extensions explicitly blocked: `.php`, `.php3`, `.php4`, `.php5`, `.phtml`, `.phar`, `.pl`, `.py`, `.sh`, `.cgi`
+- [ ] Uploads handled via `wp_handle_upload()`, not manual `move_uploaded_file()`
+
+### Redirects and SSRF
+
+- [ ] Redirects to user-supplied URLs use `wp_safe_redirect()` not `wp_redirect()`
+- [ ] Any cross-domain redirect validated against an explicit domain allowlist
+- [ ] User-supplied URLs are not passed directly to `wp_remote_get()` / `wp_remote_post()` — validate via `wp_http_validate_url()` first
+- [ ] `http_request_host_is_external` filter is not overridden to re-allow internal/private IP requests
+
+### Path traversal
+
+- [ ] No file paths built from user input without `validate_file()` returning `0` and a `realpath()` boundary check
+- [ ] `sanitize_file_name()` applied to any filename sourced from user input
+
+### Privilege escalation and IDOR
+
+- [ ] No `role` or capability data accepted from `$_POST` / `$_GET` and applied to `wp_update_user()` without allowlist validation and `current_user_can( 'promote_users' )` check
+- [ ] Object-level capability checks used: `current_user_can( 'edit_post', $post_id )` not just `current_user_can( 'edit_posts' )` when fetching posts by a user-supplied ID
+
+### Cryptographic / credential hygiene
+
+- [ ] No `md5()` or `sha1()` for password hashing — use `wp_hash_password()` / `wp_check_password()`
+- [ ] No API keys, tokens, or passwords hardcoded in plugin files — use `wp-config.php` constants
+- [ ] All external API calls use HTTPS
+
+### Information disclosure
+
+- [ ] No `phpinfo()` calls
+- [ ] `$wpdb->last_error` not output to the browser
+- [ ] No credentials, tokens, or internal paths in code comments or error messages exposed to users
+
 ## Security
 
 - [ ] All superglobal values sanitised before use
