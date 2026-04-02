@@ -4,6 +4,14 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-04-02
+
+### Added
+- `SKILL.md` — Critical severity expanded: prefix shorter than 4 characters, files written to plugin directory, remote asset offloading from own server/CDN
+- `SKILL.md` — four new failure modes: short prefix (< 4 chars) with list of all affected declaration types; writing files to plugin directory (use `wp_upload_dir()`); remote asset offloading from own CDN/S3; cloud metadata endpoints (link-local IPs such as AWS IMDS at 169.254.169.254) treated as external services requiring `== External services ==` readme.txt documentation
+- `references/pcp-checklist.md` — Code quality: 🚨 CRITICAL prefix minimum-length check (≥ 4 chars, rejects `cs_`/`my_`/`ab_`, lists all affected element types)
+- `references/pcp-checklist.md` — File and folder structure: no writing files to plugin directory; no remote asset offloading from own server/CDN
+
 ## [1.1.4] - 2026-03-22
 
 ### Added
