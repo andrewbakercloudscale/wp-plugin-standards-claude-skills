@@ -160,6 +160,7 @@ This section is the most common source of WordPress.org submission rejections. G
 
 - [ ] `readme.txt` — `Tags:` line has **5 tags maximum** — PCP flags `readme_parser_warnings_too_many_tags` if exceeded
 - [ ] `readme.txt` — short description (the single line below the header block) is **150 characters maximum** — PCP flags `readme_parser_warnings_trimmed_short_description` if longer
+- [ ] **🚨 CRITICAL — `readme.txt` `== Changelog ==` section is 5,000 words maximum** — WordPress.org truncates it on import and warns _"The Changelog section is too long and was truncated."_ Trim or summarise older entries; keep only the most recent releases in full detail
 - [ ] `readme.txt` present in plugin root
 - [ ] `uninstall.php` present and removes all plugin data
 - [ ] No `.git`, `.svn`, `node_modules`, or `vendor` in the deployed plugin
