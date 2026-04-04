@@ -4,6 +4,8 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-04-04
+
 ### Added
 - `references/security.md` — Output escaping: new sub-section "Computed variables still require escaping" covering `WordPress.Security.EscapeOutput.OutputNotEscaped` on computed variables (`$total`, `$parts`) with `esc_html()` and `array_map('esc_html', ...)` fix patterns
 - `references/security.md` — Input sanitisation: new sub-section "Every `$_POST`/`$_GET` value must be sanitised" covering `WordPress.Security.ValidatedSanitizedInput.InputNotSanitized`, explaining that bare `(int)` casts are not recognised by PHPCS and `absint( wp_unslash(...) )` is required
