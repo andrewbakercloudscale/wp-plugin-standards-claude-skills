@@ -87,6 +87,19 @@ $value = sanitize_text_field( wp_unslash( $_POST['field'] ) );
 | Filename       | `sanitize_file_name()`         |
 | Key / slug     | `sanitize_key()`               |
 
+### Every `$_POST` / `$_GET` value must be sanitised — no exceptions (`InputNotSanitized`)
+
+PHPCS flags any superglobal access that is not wrapped in a sanitiser, including parameters that look like internal options or numeric window values. Even if you know the value should be an integer, apply `absint()` (not a bare cast) so PHPCS can trace the sanitisation call.
+
+```php
+// WRONG — PHPCS: WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+$window = $_POST['par_window'];
+$window = (int) $_POST['par_window'];  // bare cast is not recognised by PHPCS
+
+// CORRECT
+$window = absint( wp_unslash( $_POST['par_window'] ?? 0 ) );
+```
+
 ## Output escaping
 
 Escape at the point of output. Never escape and store.
@@ -103,6 +116,28 @@ echo '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
 | JavaScript string | `esc_js()`                                     |
 | Translated output | `esc_html__()`, `esc_attr__()`, `esc_html_e()` |
 | Trusted HTML      | `wp_kses_post()`                               |
+
+### Computed variables still require escaping (`OutputNotEscaped`)
+
+PHPCS flags **every** variable echo'd without an escaping call, including internally-computed values such as counts, formatted strings, or concatenated arrays. "This variable wasn't from user input" is not a defence — escape at the point of output regardless.
+
+```php
+// WRONG — PHPCS: WordPress.Security.EscapeOutput.OutputNotEscaped on $total and $parts
+echo '<p>Total: ' . $total . ' (' . $parts . ')</p>';
+
+// CORRECT — escape every variable, even computed ones
+echo '<p>Total: ' . esc_html( $total ) . ' (' . esc_html( $parts ) . ')</p>';
+```
+
+For arrays rendered as a list, escape each element before joining:
+
+```php
+// WRONG
+echo implode( ', ', $parts );
+
+// CORRECT
+echo implode( ', ', array_map( 'esc_html', $parts ) );
+```
 
 ## Database queries
 
