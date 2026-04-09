@@ -243,7 +243,13 @@ After fixes are applied, confirm:
 
 - **Privacy policy falsely claims no external services** — if the readme.txt Privacy Policy section says "no external requests of any kind" but the plugin does make external requests (e.g. optional S3 sync, rclone, AWS IMDS), this is flagged in review. Ensure the privacy policy accurately reflects what the plugin does, and cross-reference the `== External services ==` section for the conditional cases.
 
-- **Plugin URI returns 404** — the `Plugin URI:` header in the plugin file must point to a real, reachable URL. A 404 is flagged by reviewers. Use a URL you control (`https://yoursite.com`) or the WordPress.org plugin page (`https://wordpress.org/plugins/your-slug/`) once approved.
+- **Plugin URI returns 404** — the `Plugin URI:` header in the plugin file must point to a real, reachable URL. A 404 is flagged by reviewers. Use a URL you control (`https://yoursite.com`) or the WordPress.org plugin page (`https://wordpress.org/plugins/your-slug/`) once approved. When checking links, follow the three-pass rule below.
+
+- **Broken link false positives from bot-protection walls** — many high-traffic sites (Reuters, WatchMojo, etc.) return `401 Unauthorized` or `403 Forbidden` to server-side HTTP requests not because authentication is required, but as a Cloudflare JA3/JA4 fingerprinting or bot-detection wall. These are not genuine broken links. When checking any URL with `WebFetch`:
+  1. **Pass 1** — fetch the URL directly. If `200–299`, the link is OK.
+  2. **Pass 2** — if `400–499`, check the status: `401`, `403`, or `405` all indicate the server is alive and responding — treat these as **likely OK** (CDN/bot-protection). A `404` is a genuine broken link. A `5xx` means the server is down.
+  3. **Pass 3** — if still uncertain after pass 2, attempt a HEAD request. `401`, `403`, or `405` on HEAD confirms the server is reachable; report the link as **likely OK** with the actual status code noted.
+  Only report a link as broken if it returns `404` or a network-level failure (no response at all).
 
 - **Development and build files included in distribution zip** — files like `docs/`, `generate-*.js`, `build.sh`, and other dev tooling must be excluded from the zip submitted to WordPress.org. These are not plugin code and can contain URLs (e.g. CDN download links) that trigger the "calling files remotely" violation. Add all such paths to the rsync/zip exclusion rules. Verify with `unzip -l plugin.zip | grep -E 'docs/|generate-|build\.'` before submitting.
 
