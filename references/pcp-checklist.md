@@ -165,6 +165,7 @@ This section is the most common source of WordPress.org submission rejections. G
 - [ ] `uninstall.php` present and removes all plugin data
 - [ ] No `.git`, `.svn`, `node_modules`, or `vendor` in the deployed plugin
 - [ ] No `package.json`, `composer.json`, `.env`, or build config files in the deployed root
+- [ ] **No unexpected markdown files in the plugin root** — only `README.md` and `CHANGELOG.md` are permitted at the root level. Dev, planning, and audit files (`UX-AUDIT.md`, `TODO.md`, `NOTES.md`, `DECISIONS.md`, etc.) must be deleted or excluded from the distribution zip. PCP flags `unexpected_markdown_file` (warning) for each unexpected `.md` found. Verify with `unzip -l plugin.zip | grep '\.md$'`.
 - [ ] All PHP files in `includes/`, `admin/`, `public/` have the ABSPATH guard
 - [ ] File names use lowercase with hyphens: `class-my-plugin-admin.php`
 - [ ] **No files written to the plugin directory** — never write to any path under `plugin_dir_path()` or `WP_PLUGIN_DIR`. Plugin directories are deleted on upgrade; files stored there are lost and publicly accessible. Use `wp_upload_dir()['basedir'] . '/plugin-slug/'` for persistent data storage. Applies to: `copy()`, `file_put_contents()`, `fwrite()`, and any WP Filesystem write whose destination resolves to the plugin folder.

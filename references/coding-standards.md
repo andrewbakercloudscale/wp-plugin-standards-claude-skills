@@ -126,6 +126,20 @@ sprintf(
 
 Load the text domain on `init` via `load_plugin_textdomain()`.
 
+**`/* translators: ... */` comment is required** whenever the i18n string contains a printf-style placeholder (`%s`, `%d`, `%1$s`, etc.). Place it on the line immediately above the `__()` / `esc_html__()` / `_n()` call. PCP flags `WordPress.WP.I18n.MissingTranslatorsComment` as an **error** on every missing comment — this blocks WordPress.org submission.
+
+```php
+// Wrong — PCP error
+echo sprintf( esc_html__( 'Hello, %s!', 'my-plugin' ), esc_html( $name ) );
+
+// Correct
+echo sprintf(
+    /* translators: %s: the user's display name */
+    esc_html__( 'Hello, %s!', 'my-plugin' ),
+    esc_html( $name )
+);
+```
+
 ## Error handling
 
 Never suppress errors with `@`. Return `WP_Error` for recoverable failures.

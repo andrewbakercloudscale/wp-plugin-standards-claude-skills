@@ -4,6 +4,14 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-04-27
+
+### Added
+- `references/coding-standards.md` — Internationalisation: explicit rule that `/* translators: %s: description */` comment is required on the line immediately above any i18n call containing a printf-style placeholder; PCP flags `WordPress.WP.I18n.MissingTranslatorsComment` as an error; added correct/wrong code examples
+- `references/pcp-checklist.md` — File and folder structure: new check for unexpected markdown files in the plugin root (`unexpected_markdown_file` PCP warning); lists permitted files (`README.md`, `CHANGELOG.md`) and examples of disallowed ones (`UX-AUDIT.md`, `TODO.md`)
+- `SKILL.md` — Critical severity expanded: i18n string with printf placeholder missing `/* translators: */` comment (`WordPress.WP.I18n.MissingTranslatorsComment`)
+- `SKILL.md` — Failure modes: new entry for unexpected markdown files in the plugin root; new "PCP errors missed" bullet for `MissingTranslatorsComment`
+
 ## [1.1.6] - 2026-04-04
 
 ### Added
