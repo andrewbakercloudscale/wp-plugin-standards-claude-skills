@@ -202,6 +202,7 @@ These are administrative checks that the reviewer performs manually and that aut
 - [ ] `Contributors:` field in `readme.txt` lists your exact WordPress.org username
 - [ ] Your WordPress.org account email matches or is clearly related to the `Author URI` domain
 - [ ] `Author:` in the plugin header matches the name on your WordPress.org profile
+- [ ] **🚨 `Author URI` must not be a placeholder domain** — WordPress.org automated scanning hard-rejects any plugin where `Author URI:` contains `example.com`, `example.org`, `example.net`, or any other RFC 2606 reserved domain. Error: `plugin_header_invalid_author_uri_domain`. Replace with your real website URL before uploading.
 - [ ] `Plugin URI` and `Author URI` domains are ones you demonstrably own or represent
 - [ ] If submitting on behalf of an organisation, your WordPress.org email is under the organisation's domain — or a DNS TXT verification record has been added to the owner's domain
 
@@ -268,3 +269,4 @@ Note: `onclick` attributes inside JavaScript **string literals** (e.g. `innerHTM
 5. Confirm `Tested up to` is the current latest stable WordPress release
 6. Confirm no development artefacts are present in the deployed plugin
 7. **Confirm no hidden files in the zip** — run `unzip -l plugin.zip | grep '/\.'` and verify zero results. WordPress.org automated scanning rejects any plugin zip containing dot-files (`.distignore`, `.gitignore`, `.env`, `.DS_Store`, etc.) with the error `hidden_files: Hidden files are not permitted.` Ensure your build script excludes all dot-files from the distribution zip.
+8. **Confirm `Author URI` is not a placeholder** — run `grep -i "Author URI" plugin-slug.php` and verify it points to a real URL you own. `example.com`, `example.org`, or `example.net` cause an automated hard-reject (`plugin_header_invalid_author_uri_domain`) before the submission reaches human review.

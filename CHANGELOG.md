@@ -4,6 +4,14 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.10] - 2026-05-06
+
+### Added
+- `SKILL.md` — Critical severity expanded: `Author URI` placeholder domain (`example.com`/`example.org`/`example.net`) causes automated hard-reject (`plugin_header_invalid_author_uri_domain`)
+- `SKILL.md` — New failure mode: Author URI placeholder domain with grep command for pre-submission check
+- `references/pcp-checklist.md` — WordPress.org submission requirements: new 🚨 check for placeholder `Author URI` domain
+- `references/pcp-checklist.md` — Pre-submission final check: step 8 — grep Author URI before every upload
+
 ## [1.1.9] - 2026-05-06
 
 ### Added
