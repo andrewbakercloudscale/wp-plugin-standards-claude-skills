@@ -4,6 +4,12 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.11] - 2026-05-06
+
+### Fixed
+- `SKILL.md` — cURL rule corrected: `curl_exec` / `curl_init` in plugin-authored code is now documented as a **hard WordPress.org rejection** (same as `shell_exec`), not a suppress-with-phpcs:ignore case. `phpcs:ignore` silences PHPCS/PCP but human reviewers still reject it; every own-code cURL call must be replaced with `wp_remote_get()` / `wp_remote_post()`.
+- `references/pcp-checklist.md` — cURL checklist item rewritten to hard-rejection: explicitly covers all own-code API integrations (Dropbox, Google Drive, AWS S3, OneDrive, OAuth flows); clarifies that vendor/third-party libraries are exempt; narrows the phpcs:ignore exception to sub-second timeout requirements only.
+
 ## [1.1.10] - 2026-05-06
 
 ### Added
