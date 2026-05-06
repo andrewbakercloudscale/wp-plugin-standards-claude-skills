@@ -4,6 +4,12 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.9] - 2026-05-06
+
+### Added
+- `references/cyber-security.md` — File upload section: added `require_once` of `wp-admin/includes/file.php` (and image.php/media.php for `media_handle_upload()`) when calling outside admin context; added `$upload['error']` check on `wp_handle_upload()` return; added `is_wp_error()` check for `media_handle_upload()` return
+- `references/security.md` — Options and transients: added Settings API `register_setting()` pattern with `sanitize_callback`, `settings_fields()` nonce output, and array-per-group storage recommendation
+
 ## [1.1.8] - 2026-05-06
 
 ### Added

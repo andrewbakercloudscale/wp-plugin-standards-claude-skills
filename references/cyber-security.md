@@ -236,12 +236,23 @@ $blocked = array( 'php', 'php3', 'php4', 'php5', 'phtml', 'phar', 'pl', 'py', 's
 if ( in_array( strtolower( $filetype['ext'] ), $blocked, true ) ) {
     wp_die( esc_html__( 'This file type is not permitted.', 'plugin-slug' ) );
 }
+// If called outside wp-admin (e.g. from a frontend AJAX handler), include the WP
+// file-handling helpers first — they are not loaded outside the admin context.
+if ( ! function_exists( 'wp_handle_upload' ) ) {
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+}
+
 // Use WordPress upload handler
 $upload = wp_handle_upload( $file, array( 'test_form' => false ) );
+
+// Always check for an error before using the result.
+if ( isset( $upload['error'] ) ) {
+    wp_die( esc_html( $upload['error'] ) );
+}
 ```
 
-- Use `wp_handle_upload()` for all file uploads — it enforces allowed types and
-  stores files in the uploads directory.
+- Use `wp_handle_upload()` for all file uploads — it enforces allowed types and stores files in the uploads directory. Always check `$upload['error']` before using the result.
+- For media library uploads use `media_handle_upload()` instead. It requires three includes outside the admin context — `wp-admin/includes/file.php`, `wp-admin/includes/image.php`, `wp-admin/includes/media.php` — and returns an attachment ID or `WP_Error`; always check with `is_wp_error()`.
 - Do not allow uploaded files to be stored in a directory that permits PHP execution.
 
 ### A05 — Security Misconfiguration

@@ -199,6 +199,41 @@ update_option( 'my_plugin_setting', sanitize_text_field( $value ) );
 echo esc_html( get_option( 'my_plugin_setting', '' ) );
 ```
 
+For settings pages built with the Settings API, declare a `sanitize_callback` in `register_setting()` — WordPress runs it automatically before the option is saved, and the Settings API outputs a nonce via `settings_fields()` so you do not need to add one manually:
+
+```php
+// Register — hook to admin_init
+add_action( 'admin_init', 'myplugin_register_settings' );
+function myplugin_register_settings(): void {
+    register_setting(
+        'myplugin_options_group',   // option group (matches settings_fields() arg)
+        'myplugin_options',          // option name — must be prefixed (≥ 4 chars)
+        array(
+            'sanitize_callback' => 'myplugin_sanitize_options',
+            'default'           => array(),
+        )
+    );
+}
+
+function myplugin_sanitize_options( $input ): array {
+    $clean = array();
+    $clean['api_key'] = sanitize_text_field( $input['api_key'] ?? '' );
+    $clean['timeout'] = absint( $input['timeout'] ?? 30 );
+    return $clean;
+}
+```
+
+```php
+// Form — settings_fields() outputs the nonce and option-page fields automatically
+<form method="post" action="options.php">
+    <?php settings_fields( 'myplugin_options_group' ); ?>
+    <?php do_settings_sections( 'myplugin' ); ?>
+    <?php submit_button(); ?>
+</form>
+```
+
+Store multiple related settings as a single serialised array rather than many individual options — one DB transaction is cheaper than many.
+
 ## Admin access control
 
 Admin pages must never be publicly reachable. Three layers are required:
