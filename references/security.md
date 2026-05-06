@@ -13,6 +13,8 @@ if ( ! isset( $_POST['my_plugin_nonce'] ) ||
      ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['my_plugin_nonce'] ) ), 'my_plugin_action' ) ) {
     wp_die( esc_html__( 'Security check failed.', 'plugin-slug' ) );
 }
+// ⚠️ wp_verify_nonce() is pluggable — always pass sanitize_text_field( wp_unslash( ... ) ),
+//    not just wp_unslash(). WordPress.org reviewers flag bare wp_unslash() on nonce values.
 
 // AJAX handler
 function my_plugin_ajax_handler() {

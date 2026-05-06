@@ -4,6 +4,19 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.1.8] - 2026-05-06
+
+### Added
+- `SKILL.md` — Critical severity expanded: shell execution (`shell_exec()`, `exec()`, `system()`, `passthru()`, `proc_open()`, `popen()`) is now documented as a hard WordPress.org rejection regardless of `escapeshellarg()` or `phpcs:ignore`
+- `SKILL.md` — PCP errors missed section: added shell execution hard-block, `fopen()` on remote URLs, nonce missing `sanitize_text_field`, `WP_CONTENT_DIR` for writable storage, logging unsanitized input before sanitize call
+- `SKILL.md` — Six new failure modes: shell execution hard block; `WP_CONTENT_DIR` for writable storage; `WP_PLUGIN_DIR` for own plugin paths; `fopen()` on remote URLs; nonce must use `sanitize_text_field(wp_unslash())`; logging unsanitized input before sanitization
+- `references/pcp-checklist.md` — Code quality: exec/shell_exec item rewritten from phpcs:ignore advice to hard rejection with removal requirement; added `fopen()` remote URL item
+- `references/pcp-checklist.md` — File and folder structure: new checks for raw `WP_CONTENT_DIR` storage and `WP_PLUGIN_DIR` own-plugin path references; `WPMU_PLUGIN_DIR` and `WP_LANG_DIR` correct-constant guidance
+- `references/security.md` — Nonce section: added inline note that `wp_verify_nonce()` requires `sanitize_text_field(wp_unslash(...))`, not just `wp_unslash()`
+
+### Fixed
+- `references/coding-standards.md` — Internationalisation: corrected contradiction — removed instruction to call `load_plugin_textdomain()` (discouraged since WP 4.6; PCP flags it)
+
 ## [1.1.7] - 2026-04-27
 
 ### Added

@@ -124,7 +124,7 @@ sprintf(
 )
 ```
 
-Load the text domain on `init` via `load_plugin_textdomain()`.
+Do **not** call `load_plugin_textdomain()` — WordPress auto-loads translations since WP 4.6 and PCP flags `PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound` on any call to it.
 
 **`/* translators: ... */` comment is required** whenever the i18n string contains a printf-style placeholder (`%s`, `%d`, `%1$s`, etc.). Place it on the line immediately above the `__()` / `esc_html__()` / `_n()` call. PCP flags `WordPress.WP.I18n.MissingTranslatorsComment` as an **error** on every missing comment — this blocks WordPress.org submission.
 
