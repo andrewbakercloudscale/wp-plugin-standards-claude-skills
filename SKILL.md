@@ -217,6 +217,7 @@ After fixes are applied, confirm:
 - **PCP errors missed during manual review** — the review skill catches patterns by reading code, but PCP runs PHPCS rules mechanically and flags things that look fine to a human reader (e.g. a variable holding `'checked'` that is never user-controlled, but still needs `esc_attr()`; or `date()` used on a timestamp the developer controls). **The only way to guarantee zero PCP errors is to run the WordPress Plugin Check plugin locally before submission.** The review skill is a guide, not a substitute for a live PCP run. Always treat PCP output as the ground truth. Critical PCP-only catches:
   - `date()` → `gmdate()` (any `date()` call, regardless of context)
   - `mt_rand()` → `wp_rand()` — PCP flags `WordPress.WP.AlternativeFunctions.rand_mt_rand` as an error
+  - `parse_url()` → `wp_parse_url()` — PCP flags `WordPress.WP.AlternativeFunctions.parse_url_parse_url` as an error on every native call; always use `wp_parse_url()` instead
   - `unlink()` → `wp_delete_file()`
   - `rmdir()` / `readfile()` → WP Filesystem
   - `wp_die('string')` → `wp_die( esc_html__( 'string', 'slug' ) )`
@@ -228,6 +229,7 @@ After fixes are applied, confirm:
   - Logging a raw superglobal value before the `sanitize_*()` call on the same or a later line — WordPress.org flags this even with a `phpcs:ignore InputNotSanitized` comment; sanitize first, log after
   - Any unescaped intermediate variable in HTML output
   - Missing `wp_unslash()` on superglobals — even for integer casts, use `(int) wp_unslash( $_POST['field'] ?? 0 )`
+  - **`$_SERVER` superglobals** (`HTTP_HOST`, `REQUEST_URI`, `SCRIPT_NAME`, etc.) require the same treatment as `$_POST`: validate the key exists (`?? ''`), `wp_unslash()`, then `sanitize_text_field()`. PCP fires `InputNotValidated`, `MissingUnslash`, and `InputNotSanitized` on every bare `$_SERVER[...]` access. **Preferred pattern:** avoid `$_SERVER` entirely for URL construction — use `home_url()`, `admin_url()`, `wp_parse_url( home_url(), PHP_URL_HOST )`, and `add_query_arg()` instead. These WordPress helpers are already slashed/sanitised and produce the correct value regardless of server config. Direct `$_SERVER` reads for URL building are almost always replaceable by a WordPress equivalent.
   - Text domain not matching WordPress.org slug (derived from plugin *name*, not folder)
   - readme.txt: >5 tags, >150-char short description
   - `printf()`/`sprintf()` with a placeholder in an i18n string — must have `/* translators: %s: description */` on the line immediately above; PCP flags `WordPress.WP.I18n.MissingTranslatorsComment` as an error on every missing comment
