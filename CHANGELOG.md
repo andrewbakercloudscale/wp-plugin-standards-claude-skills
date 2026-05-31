@@ -4,6 +4,56 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-31
+
+### Added
+- `SKILL.md` / `references/pcp-checklist.md` — named the exact Plugin Check sniff code **`PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite`** on both the plugin-directory-write rule and the `WP_CONTENT_DIR` writable-storage rule. Key clarification from a live rejection: despite the "PluginDirectory" name, this sniff **also fires on `WP_CONTENT_DIR`** ("Detected usage of constant `WP_CONTENT_DIR`. Use `wp_upload_dir()` … or save to the database instead.") whenever the constant feeds a write function (`copy()`, `file_put_contents()`, `fwrite()`, `fopen()` write-mode, `move_uploaded_file()`) — so the code must not be read as "literal plugin folder only." Added to the Critical severity row.
+- `references/wordpress-org-guidelines.md` — **new reference mapping all 18 Detailed Plugin Guidelines** (the human-reviewer policy criteria that Plugin Check / PHPCS do not catch). Gap analysis against the live guidelines found the skill was strong on the automated/technical half of review but under-covered the policy half — the most likely cause of repeat human-review rejections. Each guideline includes concrete audit greps. Emphasis on the nine commonly-missed gaps:
+  - G1 — GPL-compatibility of **all** bundled assets (images, fonts, JS/CSS libs), not just PHP libraries
+  - G4 — human-readable code: no obfuscation; minified-only JS/CSS without source is rejected
+  - G5 — no trialware (features disabled until payment / trial-expiry / licence-key gating)
+  - G6 — SaaS plugins must provide real local functionality, not be a validator/storefront shell
+  - G7 — no tracking / phoning-home without explicit default-OFF opt-in; document in `== External services ==`
+  - G8 — no third-party CDN for non-font assets, no admin `<iframe>` to external services, no installing plugins/themes from outside WordPress.org
+  - G10 — "Powered by" / credit links must be opt-in and default-hidden
+  - G11 — no admin-dashboard hijacking (non-dismissible/site-wide notices, dashboard ad referral tracking)
+  - G12 — no readme spam (≤ 5 tags, no competitor/trademark tags, no affiliate links, no keyword stuffing)
+  - G13 — use WordPress's bundled libraries (no own copy of jQuery, PHPMailer, SimplePie, Backbone, etc.)
+- `SKILL.md` — Step 0 now requires reviewing against the 18 guidelines and running the policy audit greps before producing the findings report.
+- `SKILL.md` — severity table extended with the guideline policy violations (trialware, opt-in tracking, bundled libraries, CDN/iframe/external-code loading, obfuscation as Critical; "powered by", admin-notice hijacking, readme spam, GPL-incompatible assets as High).
+- `SKILL.md` — References table now lists `wordpress-org-guidelines.md` as an always-read reference.
+- `references/pcp-checklist.md` — new "Detailed Plugin Guidelines (human review)" checklist section with the policy items and audit greps.
+
+## [1.1.14] - 2026-05-30
+
+### Fixed
+- `SKILL.md` — **Corrected unsafe advice.** The "Runtime PHP code generation" entry previously recommended bundling static PHP files in `assets/` and deploying them via `copy()` as the *correct* pattern. WordPress.org rejected exactly this approach (cloudscale-backup, Review R…/29May26): copying an executable `.php` file into a runtime location is a hard rejection **regardless of whether the content was generated or shipped as a static asset, and regardless of destination — including the uploads directory.** Entry renamed to "Deploying executable code to disk at runtime" and rewritten to state there is no compliant runtime-install path; features that must deploy a plugin/drop-in/script provide copy-paste install text for an administrator.
+- `references/pcp-checklist.md` — Same correction: "No runtime PHP code generation" item rewritten to "No executable code deployed to disk at runtime — generation OR `copy()`", removing the now-incorrect "deploy via `copy()`" guidance.
+
+### Added
+- `SKILL.md` — Audit greps for the code-deployment rule now include `copy()`, `rename()`, and `move_uploaded_file()` as write vectors (previously only `file_put_contents`/`fwrite`), since `copy()` of a `.php`/`.sh` file is the most common repeat-rejection and was missed by content-only greps.
+- `SKILL.md` — `WP_CONTENT_DIR` storage rule expanded to explicitly cover writes to the `/wp-content` **root** (e.g. a companion `slug-config.json`) — including plain data files, not just code — and names the only recognised `/wp-content` exceptions (`cache/`, `backups/`, canonical core drop-ins).
+- `SKILL.md` — Critical severity row expanded: executable code (`.php`/`.sh`) deployed to disk at runtime by any means, to any destination including the uploads directory.
+- `references/pcp-checklist.md` — `WP_CONTENT_DIR` checklist item expanded for the `/wp-content` root case and the recognised-exceptions list.
+- `SKILL.md` / `references/pcp-checklist.md` — cURL rule extended to drop-ins, mu-plugins, and bundled `assets/*.php`: the "WP HTTP API isn't loaded that early" rationale does **not** justify cURL in an early-loading drop-in (`fatal-error-handler.php`, `object-cache.php`, etc.). PCP flags `curl_init`/`curl_setopt_array`/`curl_exec`/`curl_close` there too. Correct pattern documented: guard with `function_exists( 'wp_remote_post' )` and skip the request when the API is unavailable — never fall back to cURL. Added explicit `grep` of `assets/` since drop-in `.php` files bypass the main plugin bootstrap and are easy to miss.
+
+## [1.1.13] - 2026-05-16
+
+### Added
+- `SKILL.md` / `references/pcp-checklist.md` — `parse_url()` → `wp_parse_url()` (PCP flags `WordPress.WP.AlternativeFunctions.parse_url_parse_url`)
+- `SKILL.md` / `references/pcp-checklist.md` — `$_SERVER` superglobal handling: `InputNotValidated` / `MissingUnslash` / `InputNotSanitized`; preferred fix is WordPress URL helpers (`home_url()`, `admin_url()`, `wp_parse_url()`, `add_query_arg()`) to avoid `$_SERVER` entirely
+- `references/pcp-checklist.md` — direct DB query `phpcs:ignore` pattern reinforced for intentional test/crash-test files
+
+## [1.1.12] - 2026-05-16
+
+### Added
+- `SKILL.md` — New failure mode: writing to system paths (`/usr/local/bin`, `/etc/cron.d`, `/var/log`) — applies equally to `uninstall.php` cleanup
+- `SKILL.md` — New failure mode: runtime PHP code generation (`file_put_contents()` with assembled PHP strings)
+
+### Fixed
+- `SKILL.md` — `WP_CONTENT_DIR` audit rule now requires tracing helper-function return values, not just grepping for the constant at call sites
+- `SKILL.md` — Cron `Throwable` wrapper rule strengthened: `try {` must be the first executable statement; an inner `try/catch` covering only part of the body is not sufficient
+
 ## [1.1.11] - 2026-05-06
 
 ### Fixed
