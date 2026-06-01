@@ -238,6 +238,9 @@ After fixes are applied, confirm:
   - **`exec()` / `shell_exec()` / `system()` / `passthru()` → must be removed entirely** — adding `phpcs:ignore` is not a fix; WordPress.org reviewers reject the plugin outright regardless of whether `escapeshellarg()` is used
   - `file_put_contents()` / `file_get_contents()` without phpcs:ignore — `WordPress.WP.AlternativeFunctions.file_system_operations_*`
   - `fopen()` on remote URLs — use `wp_remote_get()` / `wp_remote_post()`; many hosts block PHP stream wrappers for remote access
+  - `fread()` / `fclose()` / `fwrite()` → WP Filesystem API (`$wp_filesystem->get_contents()` / `$wp_filesystem->put_contents()`). PCP flags `WordPress.WP.AlternativeFunctions.file_system_operations_fread`, `_fclose`, and `_fwrite` the same way it flags `fopen`; all four functions are violations
+  - `slow_db_query_meta_key` — PCP warns whenever `meta_key` appears in a `WP_Query`/`get_posts()` call (`WordPress.DB.SlowDBQuery.slow_db_query_meta_key`). The fix is to ensure the column is indexed, or suppress with `// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- indexed on post_id and meta_key`
+  - **`PreparedSQLPlaceholders.ReplacementsWrongNumber`** — `$wpdb->prepare()` received a different number of replacement values than there are `%d`/`%s`/`%f` placeholders in the query string. This is a real bug, not a style warning — fix the placeholder count, do not suppress
   - `wp_verify_nonce()` called with only `wp_unslash()` on the nonce value — must use `sanitize_text_field( wp_unslash( ... ) )` because `wp_verify_nonce()` is pluggable
   - `WP_CONTENT_DIR . '/subfolder/'` for writable storage — use `wp_upload_dir()['basedir'] . '/plugin-slug/'` for all persistent file storage outside the database
   - Logging a raw superglobal value before the `sanitize_*()` call on the same or a later line — WordPress.org flags this even with a `phpcs:ignore InputNotSanitized` comment; sanitize first, log after
@@ -275,6 +278,47 @@ After fixes are applied, confirm:
   2. **Pass 2** — if `400–499`, check the status: `401`, `403`, or `405` all indicate the server is alive and responding — treat these as **likely OK** (CDN/bot-protection). A `404` is a genuine broken link. A `5xx` means the server is down.
   3. **Pass 3** — if still uncertain after pass 2, attempt a HEAD request. `401`, `403`, or `405` on HEAD confirms the server is reachable; report the link as **likely OK** with the actual status code noted.
   Only report a link as broken if it returns `404` or a network-level failure (no response at all).
+
+- **Bundled vendor/library directories produce PHPCS errors in Plugin Check** — Plugin Check runs PHPCS against every `.php` file in the plugin zip, including third-party libraries under `lib/`, `vendor/`, or similar subdirectories. These libraries (MaxMind DB reader, Guzzle, Monolog, etc.) are written for generic PHP and typically contain dozens of `ExceptionNotEscaped`, `file_system_operations_fread/fclose`, `InterpolatedNotPrepared`, and similar violations that are false positives for library code. **The correct fix is a `.phpcs.xml.dist` file in the plugin root** with exclusion patterns — Plugin Check respects this file:
+
+  ```xml
+  <?xml version="1.0"?>
+  <ruleset name="Plugin Name Standards">
+      <rule ref="WordPress"/>
+      <exclude-pattern>*/lib/*</exclude-pattern>
+      <exclude-pattern>*/vendor/*</exclude-pattern>
+  </ruleset>
+  ```
+
+  Add one `<exclude-pattern>` line per bundled library directory. Do **not** add `phpcs:ignoreFile` comments to vendor files — modifying third-party code makes future upgrades painful and may introduce merge conflicts. The `.phpcs.xml.dist` approach is zero-touch. **Audit:** if Plugin Check shows errors only in `lib/` or `vendor/` subdirectories, the plugin is missing this config file. Create it before re-running Plugin Check.
+
+- **`ExceptionNotEscaped` — PHP exceptions flagged as unescaped output** — PCP fires `WordPress.Security.EscapeOutput.ExceptionNotEscaped` when a variable is used as the message in a `throw new \Exception(...)` statement, because the sniff treats any variable as potential HTML output. Exception messages are never rendered as HTML — they are caught internally, written to logs, or converted to WP error responses. For own code, suppress inline: `// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message is not HTML output`. For third-party library code, suppress via `.phpcs.xml.dist` exclusion (see above) rather than modifying vendor files.
+
+- **`InterpolatedNotPrepared` at scale in analytics/stats plugins** — Analytics plugins that use custom DB tables (separate tables for page views, referrers, sessions, geo data, etc.) generate this warning dozens of times because `$wpdb->prepare()` cannot parameterise table names or column-name expressions — SQL identifiers cannot be bound as placeholders. This is **expected and acceptable** when:
+  - `$table` is derived from `$wpdb->prefix . 'plugin_tablename'` (WordPress table prefix + hardcoded suffix — never user input)
+  - `$cnt` / `$col` is selected from an internal allowlist (e.g. `$cnt = $unique ? 'COUNT(DISTINCT visitor_hash)' : 'SUM(view_count)'`) validated by the plugin's own logic, never `$_POST`/`$_GET`
+  
+  The suppression comment must go on the **same line** as the query string for single-line queries, or inside a `phpcs:disable` / `phpcs:enable` block for multi-line queries. Include the justification — reviewers spot-check these:
+
+  ```php
+  // Single-line — phpcs:ignore on the same line as the string:
+  $results = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $table is $wpdb->prefix value; $cnt is internal enum
+      "SELECT post_id, {$cnt} AS views FROM `{$table}` WHERE viewed_at >= %s",
+      $since
+  ) );
+
+  // Multi-line — phpcs:disable / phpcs:enable block:
+  // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $table is $wpdb->prefix value
+  $results = $wpdb->get_results(
+      $wpdb->prepare(
+          "SELECT {$cnt} AS views\n FROM `{$table}`\n WHERE viewed_at BETWEEN %s AND %s",
+          $start, $end
+      )
+  );
+  // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+  ```
+
+  **Do not suppress when the interpolated value derives from user input** — that is a real SQL injection risk requiring `$wpdb->esc_sql()` or query restructuring. A plugin with dozens of custom-table queries should expect 50–100 of these warnings and plan the suppression comments up front, not after receiving PCP output.
 
 - **Development and build files included in distribution zip** — files like `docs/`, `generate-*.js`, `build.sh`, and other dev tooling must be excluded from the zip submitted to WordPress.org. These are not plugin code and can contain URLs (e.g. CDN download links) that trigger the "calling files remotely" violation. Add all such paths to the rsync/zip exclusion rules. Verify with `unzip -l plugin.zip | grep -E 'docs/|generate-|build\.'` before submitting.
 
