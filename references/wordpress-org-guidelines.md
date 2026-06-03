@@ -83,6 +83,7 @@ the readme, and the admin UI behaviour, not by running a tool.
   services ==` — what service, what data is sent, when, and links to its Terms and
   Privacy Policy. The readme's privacy statement must be **accurate** (no "makes no
   external requests" while a beacon fires).
+- **All Terms/Privacy URLs must be live** — the automated pre-reviewer validates every URL in the readme before the submission reaches a human. A Terms or Privacy Policy link that returns HTTP 404 is reported as a failure with the exact URL. Verify each URL with `curl -sI <url> | head -1` before submitting. If a third-party service has moved its policy page, find the current URL on their site and update the readme.
 - **Audit:** find every `wp_remote_*` / outbound call and confirm (a) it is gated behind
   explicit opt-in (default off), and (b) it is documented. Calls to your *own* analytics
   endpoint on activation/page-load with no opt-in are the classic rejection here.
@@ -100,6 +101,7 @@ the readme, and the admin UI behaviour, not by running a tool.
 - **Audit:** `grep -rn "<iframe\|cdn\.\|jsdelivr\|unpkg\|cloudflare\|googleapis\|<script[^>]*src=.https" --include=*.php --include=*.html`.
   Anything loading code/markup/assets from a remote host (other than fonts/documented
   API calls) is a violation.
+- **Code comments mentioning external domain names can trigger the automated pre-reviewer's URL scanner** — a PHP doc comment like `* (as listed at cloudflare.com/ips-v4)` or `// see cdn.example.com/docs` will be flagged as "Calling files remotely" even though no network request is made. The automated scanner looks for domain-like patterns in all file content, not just in string literals. Remove external domain references from code comments, or rewrite them to avoid URL-like patterns (e.g., `// see the Cloudflare IP range documentation` instead of `// cloudflare.com/ips-v4`). If the reference is essential, move it to `readme.txt` under `== External services ==` where it is expected.
 
 ## 9 — Legal & ethical conduct
 

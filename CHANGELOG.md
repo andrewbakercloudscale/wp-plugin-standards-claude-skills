@@ -4,6 +4,17 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-06-03
+
+### Added
+- `SKILL.md` / `references/pcp-checklist.md` — **readme.txt URL validity check (Critical)**: all URLs declared in `readme.txt` (`Plugin URI`, `Author URI`, links in `== External services ==` including Terms and Privacy Policy) must return HTTP 200. The automated pre-reviewer validates these before the submission reaches human review; 404 responses are reported as failures. Added `curl -sI` audit to the pre-submission checklist.
+- `SKILL.md` / `references/pcp-checklist.md` — **Contributors field specificity**: `Contributors:` must contain the actual WordPress.org login username of the plugin owner/submitter — not a brand slug or display name. The automated pre-reviewer warns "None of the listed contributors 'X' is the WordPress.org username of the owner" if the submitting account's username is absent. Added to Critical severity row.
+- `SKILL.md` / `references/wordpress-org-guidelines.md` (G8) — **Code comments must not contain external domain names**: the automated pre-reviewer scans all file content (not just string literals) for URL-like patterns and flags matches as "Calling files remotely" even when no network request is made. A PHP doc comment like `* (as listed at cloudflare.com/ips-v4)` triggers the check. Guidance: remove or rewrite domain references in comments to avoid URL patterns; move essential references to `readme.txt` `== External services ==`.
+- `references/pcp-checklist.md` / `references/wordpress-org-guidelines.md` (G7) — **Terms/Privacy URL live-check requirement**: all service policy links in `== External services ==` must resolve; added `curl -sI` pre-submission audit step.
+
+### Changed
+- `SKILL.md` Critical severity table / `references/pcp-checklist.md` — **`__return_true` permission_callback rule is now nuanced**: `__return_true` is *permitted* for genuinely public, read-only endpoints (e.g. fetching view counts for published posts), but the handler must gate on `get_post_status( $id ) === 'publish'` before returning per-object data. Write endpoints (`POST`/`PUT`/`DELETE`) that affect specific posts/users must use `current_user_can( 'edit_post', $id )` (or equivalent) regardless of nonce validity — a `wp_rest` nonce authenticates session context, not the caller's capability over specific content. Flag only endpoints where `__return_true` exposes non-public data or allows writes without per-object capability checks.
+
 ## [1.2.0] - 2026-05-31
 
 ### Added

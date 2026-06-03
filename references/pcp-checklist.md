@@ -27,7 +27,7 @@ code patterns and explanations.
 - [ ] Every file in `admin/partials/` has both an ABSPATH guard (`exit;`) and a `current_user_can()` check
 - [ ] No admin-only AJAX action registered on `wp_ajax_nopriv_` — that hook fires for logged-out users
 - [ ] All `admin_post_{action}` handlers call `check_admin_referer()` and `current_user_can()`
-- [ ] No REST endpoint uses `'__return_true'` as `permission_callback`
+- [ ] No REST endpoint uses `'__return_true'` as `permission_callback` **unless the endpoint is genuinely public** — `__return_true` is permitted only when every piece of data returned is already publicly visible to anonymous users AND the endpoint performs no writes. When using `__return_true` on a GET endpoint, the handler itself must gate on `get_post_status( $id ) === 'publish'` (or equivalent) before returning any per-object data — returning counts or details for private/draft posts via `__return_true` exposes non-public data to anonymous callers. Write endpoints (`POST`/`PUT`/`DELETE`) that modify content tied to specific posts/users must check `current_user_can( 'edit_post', $id )` (or appropriate capability) regardless of whether the request carries a valid `wp_rest` nonce — a nonce authenticates session context, it is not a capability check. Endpoints that are intentionally public must include a comment: `// Public by design: read-only, [explain what is returned and why it is safe to expose anonymously]`.
 - [ ] `is_admin()` is not used as an access-control check — it checks whether the admin area is loaded, not whether the user is an administrator; use `current_user_can()` instead
 
 ### Injection and deserialisation
@@ -78,7 +78,7 @@ code patterns and explanations.
 - [ ] All DB queries use `$wpdb->prepare()`
 - [ ] All output escaped with context-specific escaper
 - [ ] All AJAX handlers call `check_ajax_referer()` or `wp_verify_nonce()`
-- [ ] All REST endpoints have a non-trivial `permission_callback`
+- [ ] All REST endpoints have a meaningful `permission_callback` — `'__return_true'` is only appropriate for endpoints returning data that is publicly visible to anonymous users AND performing no writes; any endpoint that returns per-object non-public data (private posts, user-specific counts) or processes writes must use `current_user_can()` on the specific capability and object
 - [ ] All privileged actions gated with `current_user_can()`
 - [ ] No `eval()`
 - [ ] No `base64_decode()` on untrusted input
@@ -208,10 +208,11 @@ This section is the most common source of WordPress.org submission rejections. G
 
 These are administrative checks that the reviewer performs manually and that automated tools do not catch.
 
-- [ ] `Contributors:` field in `readme.txt` lists your exact WordPress.org username
+- [ ] `Contributors:` field in `readme.txt` contains the **actual WordPress.org account username of the plugin owner/submitter** — not a brand name, company slug, or display name. The automated pre-reviewer checks that the submitting account's username appears in the `Contributors:` list and warns: "WARNING: None of the listed contributors 'X' is the WordPress.org username of the owner". The username in `Contributors:` must match the account you log into wordpress.org with (e.g., `andrewjbaker`, not `cloudscale`).
 - [ ] Your WordPress.org account email matches or is clearly related to the `Author URI` domain
 - [ ] `Author:` in the plugin header matches the name on your WordPress.org profile
 - [ ] **🚨 `Author URI` must not be a placeholder domain** — WordPress.org automated scanning hard-rejects any plugin where `Author URI:` contains `example.com`, `example.org`, `example.net`, or any other RFC 2606 reserved domain. Error: `plugin_header_invalid_author_uri_domain`. Replace with your real website URL before uploading.
+- [ ] **All URLs declared in `readme.txt` must return HTTP 200** — the automated pre-reviewer validates every URL in the readme, including `Plugin URI:`, `Author URI:`, and all links in `== External services ==` (Terms of Service, Privacy Policy). A URL that returns 404 is reported as a failure before the submission reaches human review. Verify each URL resolves before submitting: `curl -sI <url> | head -1`. If a third-party service has moved or removed its Terms/Privacy page, find the current URL on their site.
 - [ ] `Plugin URI` and `Author URI` domains are ones you demonstrably own or represent
 - [ ] If submitting on behalf of an organisation, your WordPress.org email is under the organisation's domain — or a DNS TXT verification record has been added to the owner's domain
 
@@ -279,6 +280,8 @@ Note: `onclick` attributes inside JavaScript **string literals** (e.g. `innerHTM
 6. Confirm no development artefacts are present in the deployed plugin
 7. **Confirm no hidden files in the zip** — run `unzip -l plugin.zip | grep '/\.'` and verify zero results. WordPress.org automated scanning rejects any plugin zip containing dot-files (`.distignore`, `.gitignore`, `.env`, `.DS_Store`, etc.) with the error `hidden_files: Hidden files are not permitted.` Ensure your build script excludes all dot-files from the distribution zip.
 8. **Confirm `Author URI` is not a placeholder** — run `grep -i "Author URI" plugin-slug.php` and verify it points to a real URL you own. `example.com`, `example.org`, or `example.net` cause an automated hard-reject (`plugin_header_invalid_author_uri_domain`) before the submission reaches human review.
+9. **Verify all readme.txt URLs are live** — `grep -oE 'https?://[^)>" ]+' readme.txt | sort -u` and check each with `curl -sI`. The automated pre-reviewer validates `Plugin URI`, `Author URI`, and all links in `== External services ==` (Terms, Privacy). A 404 response blocks submission.
+10. **Confirm `Contributors:` contains your WordPress.org login username** — run `grep "^Contributors:" readme.txt` and verify the value matches the account you log into wordpress.org with, not a brand slug. Mismatch generates an automated warning that the submitting account is not listed as a contributor.
 
 ## Detailed Plugin Guidelines (human review — not caught by PCP)
 
