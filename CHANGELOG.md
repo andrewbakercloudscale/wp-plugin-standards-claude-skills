@@ -4,7 +4,7 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
-## [1.2.2] - 2026-06-03
+## [1.2.3] - 2026-06-03
 
 ### Added
 - `SKILL.md` / `references/pcp-checklist.md` — **readme.txt URL validity check (Critical)**: all URLs declared in `readme.txt` (`Plugin URI`, `Author URI`, links in `== External services ==` including Terms and Privacy Policy) must return HTTP 200. The automated pre-reviewer validates these before the submission reaches human review; 404 responses are reported as failures. Added `curl -sI` audit to the pre-submission checklist.
