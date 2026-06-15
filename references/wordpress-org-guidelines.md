@@ -103,11 +103,16 @@ the readme, and the admin UI behaviour, not by running a tool.
   API calls) is a violation.
 - **Code comments mentioning external domain names can trigger the automated pre-reviewer's URL scanner** — a PHP doc comment like `* (as listed at cloudflare.com/ips-v4)` or `// see cdn.example.com/docs` will be flagged as "Calling files remotely" even though no network request is made. The automated scanner looks for domain-like patterns in all file content, not just in string literals. Remove external domain references from code comments, or rewrite them to avoid URL-like patterns (e.g., `// see the Cloudflare IP range documentation` instead of `// cloudflare.com/ips-v4`). If the reference is essential, move it to `readme.txt` under `== External services ==` where it is expected.
 
-## 9 — Legal & ethical conduct
+## 9 — Legal & ethical conduct 🔴 partly missed
 
 - No black-hat SEO, fake reviews, sockpuppet ratings, plagiarised code, or harassment.
-- **Check:** code is original or properly licensed/attributed; the readme makes no
-  manipulative claims.
+- **Code-checkable violations — any of these are a hard-rejection and may result in developer account suspension:**
+  - **Cryptocurrency mining / cryptojacking** — any code that mines cryptocurrency, executes PoW hashing loops, or loads a mining library (CoinHive, CryptoNight, etc.) without explicit user consent. **Audit:** `grep -rn "coinhive\|cryptonight\|monero\|nicehash\|cryptonight\|stratum+tcp\|mining_pool" --include=*.php --include=*.js`
+  - **Botnet / unauthorized resource commandeering** — code that pings a C2 server, participates in DDoS floods via `curl_multi_exec`, or executes commands received from a remote endpoint. **Audit:** `grep -rn "curl_multi_exec\|system(\|shell_exec\|exec(" --include=*.php` — review every hit for remote-command-execution patterns.
+  - **Unauthorized data harvesting** — scraping user data (passwords, keys, personal info) and sending it to a third-party server without opt-in (ties to Guideline 7 tracking rules).
+  - **Fake review / rating manipulation** — code that auto-generates reviews, pre-fills review forms, or redirects users to the reviews page with pre-populated text.
+  - **Plagiarised code** — shipping another plugin's code as your own (reviewers cross-check similarity).
+- **Check:** code is original or properly licensed/attributed; the readme makes no manipulative claims; no resource-commandeering patterns in any PHP or JS file.
 
 ## 10 — "Powered by" links and credits must be opt-in and default-hidden 🔴 commonly missed
 
