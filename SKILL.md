@@ -327,6 +327,21 @@ After fixes are applied, confirm:
 
 - **`NonPrefixedHooknameFound` for WordPress core hooks** — when a plugin calls `apply_filters()` or `do_action()` using a WordPress core hook name (e.g. `the_content`, `https_local_ssl_verify`, `robots_txt`), PHPCS warns that the hook name does not start with the plugin prefix. This is a false positive — the plugin is *invoking* a core hook, not *registering* its own. Suppress inline: `// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- [hook-name] is a WordPress core filter`. See `references/pcp-checklist.md` §Code quality.
 
+- **`NonPrefixedClassFound` — class name not recognised as starting with the plugin prefix** (`WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound`) — PHPCS's `PrefixAllGlobals` sniff does a **case-sensitive** prefix match. If the plugin registers `cloudscale` (lowercase) as its prefix in `phpcs.xml`, then a class named `CloudScale_Licence` (PascalCase) is flagged as non-prefixed — even though it clearly belongs to the plugin. This surprises developers who assume the prefix check is case-insensitive. The same applies to interfaces and traits. **Two fixes (choose one):**
+  1. **Register all case variants** in `phpcs.xml` (or `.phpcs.xml.dist`) — the simplest fix when renaming classes is impractical:
+     ```xml
+     <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+       <properties>
+         <property name="prefixes" type="array">
+           <element value="your_prefix"/>
+           <element value="Your_Prefix"/>
+           <element value="YOUR_PREFIX"/>
+         </property>
+       </properties>
+     </rule>
+     ```
+  2. **Rename the class** to match the registered prefix exactly (e.g. `Yourprefix_Licence` if `yourprefix` is registered). This is the cleaner long-term fix but requires updating every reference. **Audit:** `grep -rn "^class \|^abstract class \|^final class \|^interface \|^trait " --include=*.php .` — compare each class name against the prefix(es) in `phpcs.xml`. Any class whose name (case-exact) does not start with a registered prefix is a violation. Also covers `define()` constants and global function names — the same sniff fires for `MYPLUGIN_VERSION` if `myplugin` is registered but `MYPLUGIN` is not.
+
 - **`Author URI` placeholder domain — automated hard-reject** — WordPress.org's automated scanner rejects any plugin where `Author URI:` in the plugin header contains `example.com`, `example.org`, `example.net`, or any RFC 2606 reserved placeholder domain. Error: `plugin_header_invalid_author_uri_domain`. This fires before the submission even reaches human review. **Grep before every submission:** `grep -i "Author URI" plugin-slug.php` and confirm it points to a real URL you own. The same applies to `Plugin URI:` — a 404 or placeholder there is also flagged.
 
 - **Plugin name contains "Free"** — WordPress.org discourages the word "Free" in a plugin display name; it is redundant in the directory. A name like "My Plugin Free" will be rejected and the reviewer will ask you to rename it. Remove "Free" from the display name and slug. If the old slug is already in use (e.g. during submission), request a new slug in your reply email.
