@@ -4,6 +4,11 @@ All notable changes to wp-plugin-standards-claude-skills are documented here.
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-06-30
+
+### Added
+- `SKILL.md` — **Mandatory mechanical grep audit (Step 0.5)**: new required workflow step that runs six deterministic bash greps immediately after the user confirms the review scope. Catches `NonSingularStringLiteralDomain`, cURL, shell execution, `_e()`/`_ex()`, short tags, and `application_detected` tooling files — patterns the LLM reliably misses in large files with many call sites. Root cause: the audit greps for these patterns were already documented in the rule descriptions but were advisory text, not an enforced workflow step. The skill missed 34 `NonSingularStringLiteralDomain` violations across `class-cloudscale-licence.php` and `class-cloudscale-telegram.php` (both using `$td` / `$text_domain` as the i18n domain arg in 25+ calls each) because no bash command was required to surface them.
+
 ## [1.2.3] - 2026-06-03
 
 ### Added

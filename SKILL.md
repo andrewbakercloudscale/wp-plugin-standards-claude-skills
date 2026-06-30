@@ -74,6 +74,32 @@ Severity definitions:
 
 **Do not proceed to Step 1 until the user replies with confirmation.**
 
+### Step 0.5 — Mandatory mechanical grep audit
+
+**Run these bash commands immediately after receiving confirmation. Do not skip. These greps catch violations that LLM file-reading routinely misses — they are deterministic and must always run before any file edits.**
+
+```bash
+# 1. i18n domain passed as variable (NonSingularStringLiteralDomain) — one Critical per call
+grep -rn "__(\|_e(\|esc_html__(\|esc_attr__(\|_x(\|_n(\|esc_html_e(\|esc_attr_e(\|esc_html_x(\|esc_attr_x(" --include=*.php . | grep '\$[a-zA-Z_]' | grep -v "vendor/\|node_modules/"
+
+# 2. cURL usage — hard rejection
+grep -rn "curl_init\|curl_exec\|curl_multi_init\|curl_share_init\|curl_file_create" --include=*.php . | grep -v "vendor/\|node_modules/"
+
+# 3. Shell execution — hard rejection
+grep -rn "\bshell_exec\b\|\bexec(\|\bsystem(\|\bpassthru(\|\bproc_open\|\bpopen(" --include=*.php . | grep -v "vendor/\|node_modules/"
+
+# 4. _e() / _ex() unescaped output
+grep -rn "\b_e(\|\b_ex(" --include=*.php . | grep -v "vendor/\|node_modules/"
+
+# 5. Short tags
+grep -rn "<?[^p]" --include=*.php . | grep -v "vendor/\|node_modules/"
+
+# 6. application_detected — tooling files in zip
+find . -maxdepth 3 \( -name "phpcs.xml*" -o -name ".phpcs.xml*" -o -name "phpunit.xml*" -o -name "package.json" -o -name "composer.json" -o -name "Gruntfile.js" -o -name "webpack.config.js" \) | grep -v "vendor/"
+```
+
+Report every hit as a Critical finding before proceeding to Step 1.
+
 ### Step 1 — Check Utils
 
 Before writing any new function, read `includes/class-SLUG-utils.php` and confirm
