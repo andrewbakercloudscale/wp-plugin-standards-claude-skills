@@ -96,9 +96,34 @@ grep -rn "<?[^p]" --include=*.php . | grep -v "vendor/\|node_modules/"
 
 # 6. application_detected — tooling files in zip
 find . -maxdepth 3 \( -name "phpcs.xml*" -o -name ".phpcs.xml*" -o -name "phpunit.xml*" -o -name "package.json" -o -name "composer.json" -o -name "Gruntfile.js" -o -name "webpack.config.js" \) | grep -v "vendor/"
+
+# 7. OutputNotEscaped — echo/print with unescaped $variables
+# Lines containing echo/print AND a $variable but NO escaping function on the same line.
+# False-negative caveat: a line like `echo esc_html($a) . $b` has esc_ so it won't appear here —
+# read any line with multiple concatenated variables carefully even if it passes this filter.
+grep -rn "\becho\b\|\bprint\b\|\bprintf\b\|<?" --include=*.php . \
+  | grep '\$[a-zA-Z_]' \
+  | grep -v 'esc_html\|esc_attr\|esc_url\|esc_js\|esc_textarea\|esc_sql\|esc_xml\|wp_kses\|absint\|intval\|number_format\|wp_json_encode\|sanitize_\|true\|false\|count(\|strlen(' \
+  | grep -v "vendor/\|node_modules/\|//\s*phpcs:ignore"
+
+# 8. parse_url — must use wp_parse_url() (WordPress.WP.AlternativeFunctions.parse_url_parse_url)
+grep -rn "\bparse_url\s*(" --include=*.php . | grep -v "vendor/\|node_modules/"
+
+# 9. InputNotSanitized — raw superglobal access; each hit must be sanitized via wp_unslash + sanitize_*
+grep -rn "\$_POST\b\|\$_GET\b\|\$_REQUEST\b\|\$_COOKIE\b\|\$_SERVER\b" --include=*.php . \
+  | grep -v "vendor/\|node_modules/\|//\s*phpcs:ignore" \
+  | grep -v "wp_unslash\|sanitize_\|absint\|intval\|check_ajax_referer\|wp_verify_nonce\|check_admin_referer"
+
+# 10. NonPrefixedClassFound — all class/interface/trait declarations; verify each starts with plugin prefix
+grep -rn "^class \|^abstract class \|^final class \|^interface \|^trait " --include=*.php . \
+  | grep -v "vendor/\|node_modules/"
 ```
 
 Report every hit as a Critical finding before proceeding to Step 1.
+
+**Note on grep #7 (OutputNotEscaped):** This grep surfaces most violations but can miss a line that has *both* an escaped variable and an unescaped one (e.g. `echo esc_html($a) . $b`). After running the grep, also read every PHP file section that outputs HTML and confirm every interpolated or concatenated `$variable` is wrapped in `esc_html()`, `esc_attr()`, `esc_url()`, `esc_js()`, or `absint()` at the point of output — not just earlier in the function.
+
+**Note on grep #9 (InputNotSanitized):** This grep surfaces superglobal reads for review; lines that only check `isset( $_POST['key'] )` without using the value are usually fine. Validate that every line where the value is *used* wraps it as `sanitize_text_field( wp_unslash( $_POST['key'] ) )` or equivalent.
 
 ### Step 1 — Check Utils
 
