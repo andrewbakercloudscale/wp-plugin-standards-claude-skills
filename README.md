@@ -128,3 +128,7 @@ Pair with [wp-plugin-development](https://github.com/WordPress/agent-skills) for
 ## Licence
 
 GPLv2 or later — https://www.gnu.org/licenses/gpl-2.0.html
+
+## Author
+
+Written by [Andrew Baker](https://github.com/andrewbakercloudscale), Group Chief Information Officer at [Capitec Bank](https://www.capitecbank.co.za/). Blog: [andrewbaker.ninja](https://andrewbaker.ninja/). LinkedIn: [andrew-baker-ninja](https://www.linkedin.com/in/andrew-baker-ninja/).
